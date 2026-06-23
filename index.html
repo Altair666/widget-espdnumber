@@ -105,6 +105,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .bs-code{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--tx);line-height:1;flex-shrink:0;text-align:center;min-width:120px}
 .bs-path{flex:1;min-width:0}
 .bs-row{font-size:15px;color:var(--tx);line-height:1.4}
+.browse-step{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 16px;background:var(--surf2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);font-size:11px;color:var(--tx2);min-height:17px}
+.browse-step:empty{display:none}
 
 /* Карточки классов — строки */
 .cls-list{display:flex;flex-direction:column;gap:4px}
@@ -340,6 +342,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
         <div class="bs-code" id="bsCode"></div>
         <div class="bs-path" id="bsPath"></div>
       </div>
+      <div class="browse-step" id="browseStep"></div>
       <div class="pb" id="browseBody"></div>
     </div>
 
@@ -407,7 +410,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.3</footer>
+<footer class="ver-footer">v0.4</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -426,6 +429,8 @@ const S = {
   // form
   selKind: null,     // {id, code, name}
   selUse: null,      // {id, estd_number, name}
+  showExtPicker: false,  // true когда открыт список «наименование операции» для текущего листа
+  pendingLeafKind: null, // лист, выбранный до открытия списка операций (для возврата)
   kindAcIdx: -1,
   useAcIdx: -1,
   browserKindAcIdx: -1,
@@ -456,17 +461,28 @@ const EXT_CODE_LEN = 2;
 const SERIAL_LEN = 5;
 const KIND_CODE_RE = new RegExp(`^\\d{${LEAF_CODE_LEN}}(\\d{${EXT_CODE_LEN}})?$`);
 
-/* Узел терминален (регистрируемый), если у него нет обычных детей по parent_code
-   и (для листа-метода) нет шаблонных расширений по его 2-значному коду метода */
+/* Узел терминален (регистрируемый), если у него нет обычных детей по parent_code.
+   Лист-метод (5 цифр) терминален всегда — наименование операции необязательно
+   и подключается отдельной кнопкой, а не принудительным переходом вглубь. */
 function isTerminalCode(code) {
-  if (S.classifier.some(r => r.parent_code === code)) return false;
-  const methodCode = String(code).slice(-2);
-  if (String(code).length === LEAF_CODE_LEN && S.classifier.some(r => r.level === EXT_LEVEL && r.parent_code === methodCode)) return false;
-  return true;
+  return !S.classifier.some(r => r.parent_code === code);
+}
+
+/* Есть ли для данного листа-метода (5 цифр) шаблонные наименования операций в КТО 1-85-151 */
+function hasExtOptions(leafCode) {
+  const methodCode = String(leafCode).slice(-2);
+  return S.classifier.some(r => r.level === EXT_LEVEL && r.parent_code === methodCode);
+}
+
+/* Человекочитаемая подпись текущего шага классификатора */
+function levelLabel(level) {
+  if (level === LEAF_LEVEL) return 'Вид технологического процесса по методу выполнения';
+  if (level === EXT_LEVEL) return 'Наименование операции';
+  return level;
 }
 
 /* Дети узла в дереве просмотра: для листа-метода виртуально подмешиваем
-   шаблонные расширения (parent_code = 2-значный код метода), склеивая код 7 цифр */
+   шаблонные наименования операций (parent_code = 2-значный код метода), склеивая код 7 цифр */
 function getNodeChildren(code) {
   const direct = S.classifier.filter(r => r.parent_code === code);
   if (String(code).length === LEAF_CODE_LEN) {
@@ -786,7 +802,7 @@ async function searchClassifierKinds(q) {
   const useAlt = qAlt !== q;
   if (!S.accessToken || !S.tokenBaseUrl) {
     return S.classifier.filter(r =>
-      r.level === LEAF_LEVEL && isTerminalCode(r.code) &&
+      r.level === LEAF_LEVEL &&
       (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
     ).slice(0, 30);
   }
@@ -809,7 +825,7 @@ async function searchClassifierKinds(q) {
     return records;
   } catch(e) {
     return S.classifier.filter(r =>
-      r.level === LEAF_LEVEL && isTerminalCode(r.code) &&
+      r.level === LEAF_LEVEL &&
       (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
     ).slice(0, 30);
   }
@@ -1226,24 +1242,22 @@ function renderBrowse() {
   renderBreadcrumb();
   renderBrowseSummary();
   const body = document.getElementById('browseBody');
+  const stepEl = document.getElementById('browseStep');
   const path = S.browsePath;
 
   if (S.classifierLoading) {
+    stepEl.innerHTML = '';
     body.innerHTML = `<div class="empty" style="color:var(--tx3)">Загрузка…</div>`;
     return;
   }
   if (!S.classifier.length) {
+    stepEl.innerHTML = '';
     body.innerHTML = `<div class="empty">Классификатор не загружен.<br>Проверьте таблицу ESTD_classifier в Grist.</div>`;
     return;
   }
 
-  // Если последний выбранный — терминальный вид (метод без расширения или расширенный код), список не показываем
-  if (path.length && isTerminalCode(path[path.length-1].code)) {
-    body.innerHTML = '';
-    return;
-  }
-
   if (!path.length) {
+    stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(TOP_LEVEL))}</span>`;
     const classes = S.classifier.filter(r => r.level === TOP_LEVEL);
     body.innerHTML = `<div class="cls-list">${classes.map(c => `
       <div class="cls-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
@@ -1253,19 +1267,61 @@ function renderBrowse() {
     return;
   }
 
-  const parentCode = path[path.length-1].code;
-  const children = getNodeChildren(parentCode);
+  const cur = path[path.length-1];
 
+  if (isTerminalCode(cur.code)) {
+    if (cur.level === LEAF_LEVEL) {
+      const canExtend = hasExtOptions(cur.code);
+      if (S.showExtPicker) {
+        stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(EXT_LEVEL))} (необязательно)</span>
+          <button class="btn-sm" onclick="toggleExtPicker()">← Назад к регистрации</button>`;
+        const ext = getNodeChildren(cur.code);
+        body.innerHTML = ext.length
+          ? `<div class="sub-list">${ext.map(c => `
+              <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+                <span class="sub-row-code">${c.code}</span>
+                <span class="sub-row-name">${esc(c.name)}</span>
+              </div>`).join('')}</div>`
+          : `<div class="empty">Нет вариантов наименования операции для этого метода</div>`;
+      } else {
+        stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(LEAF_LEVEL))}</span>` +
+          (canExtend ? `<button class="btn-sm" onclick="toggleExtPicker()">+ Добавить наименование операции</button>` : '');
+        body.innerHTML = '';
+      }
+    } else {
+      stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(cur.level))}</span>`;
+      body.innerHTML = '';
+    }
+    return;
+  }
+
+  const children = getNodeChildren(cur.code);
   if (!children.length) {
+    stepEl.innerHTML = '';
     body.innerHTML = '';
     return;
   }
 
+  stepEl.innerHTML = `<span>Шаг: ${esc(levelLabel(children[0].level))}</span>`;
   body.innerHTML = `<div class="sub-list">${children.map(c => `
     <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
       <span class="sub-row-code">${c.code}</span>
       <span class="sub-row-name">${esc(c.name)}</span>
     </div>`).join('')}</div>`;
+}
+
+function toggleExtPicker() {
+  S.showExtPicker = !S.showExtPicker;
+  if (S.showExtPicker) {
+    S.pendingLeafKind = S.selKind;
+    S.selKind = null;
+  } else {
+    S.selKind = S.pendingLeafKind || S.selKind;
+    S.pendingLeafKind = null;
+  }
+  updatePreview();
+  renderBrowse();
+  renderRegistered();
 }
 
 function renderBrowseSummary() {
@@ -1282,15 +1338,14 @@ function renderBrowseSummary() {
 
 async function browseDrill(code, name, level) {
   S.browsePath.push({code, name, level});
+  S.showExtPicker = false;
+  S.pendingLeafKind = null;
   if (level === EXT_LEVEL) {
     const kind = await findOrCreateKindByCode(code);
     if (kind) pickKind(kind);
   } else if (level === LEAF_LEVEL) {
-    await ensureChildrenLoaded(code);
-    if (isTerminalCode(code)) {
-      const kind = S.classifier.find(r => r.code === code);
-      if (kind) pickKind(kind);
-    }
+    const kind = S.classifier.find(r => r.code === code);
+    if (kind) pickKind(kind);
   } else {
     await ensureChildrenLoaded(code);
   }
@@ -1300,11 +1355,13 @@ async function browseDrill(code, name, level) {
 
 function browseUp(idx) {
   S.browsePath = S.browsePath.slice(0, idx);
-  // сбрасываем вид если ушли выше
-  if (!S.browsePath.length || !isTerminalCode(S.browsePath[S.browsePath.length-1].code)) {
-    renderRegistered();
-  }
+  S.showExtPicker = false;
+  S.pendingLeafKind = null;
+  const cur = S.browsePath[S.browsePath.length-1];
+  S.selKind = (cur && isTerminalCode(cur.code)) ? (S.classifier.find(r => r.code === cur.code) || null) : null;
+  updatePreview();
   renderBrowse();
+  renderRegistered();
 }
 
 function renderBreadcrumb() {
@@ -1329,7 +1386,7 @@ async function onBrowserKindInput() {
     const qAlt = stripCodePrefix(q);
     const useAlt = qAlt !== q;
     items = S.classifier.filter(r =>
-      r.level === LEAF_LEVEL && isTerminalCode(r.code) &&
+      r.level === LEAF_LEVEL &&
       (r.code.toLowerCase().includes(q) || (useAlt && r.code.toLowerCase().includes(qAlt)) || (r.name||'').toLowerCase().includes(q))
     ).slice(0, 30);
   }
@@ -1384,9 +1441,10 @@ function renderRegistered() {
   const body = document.getElementById('regBody');
   const count = document.getElementById('regCount');
 
-  // показываем только если выбран терминальный вид (метод без расширения или расширенный код)
+  // показываем только если выбран терминальный вид и не открыт список наименований операций
   const path = S.browsePath;
-  if (!path.length || !isTerminalCode(path[path.length-1].code)) {
+  if (!path.length || !isTerminalCode(path[path.length-1].code) ||
+      (path[path.length-1].level === LEAF_LEVEL && S.showExtPicker)) {
     panel.style.display = 'none';
     return;
   }
@@ -1639,6 +1697,8 @@ function avatarColor(name) {
 ═══════════════════════════════════ */
 function pickKind(kind) {
   S.selKind = kind;
+  S.showExtPicker = false;
+  S.pendingLeafKind = null;
   updatePreview();
   renderRegistered();
 }
@@ -1689,6 +1749,9 @@ function updatePreview() {
     prevDN.value = '—————.—————';
     btnAdd.disabled = true;
     hint.style.display = 'block';
+    hint.textContent = S.showExtPicker
+      ? 'Выберите наименование операции выше либо нажмите «Назад к регистрации»'
+      : 'Выберите вид в блоке «Классификатор ЕСТД» выше';
     return;
   }
   hint.style.display = 'none';
