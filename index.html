@@ -407,7 +407,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 </main>
 </div>
 
-<footer class="ver-footer">v0.1</footer>
+<footer class="ver-footer">v0.2</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -415,7 +415,7 @@ mark{background:var(--warn-bg);color:var(--warn);border-radius:4pt}
 ═══════════════════════════════════ */
 const S = {
   activeTab: 'reg',  // 'reg' (Регистрация номера) | 'structure' (Структура изделия)
-  classifier: [],   // Estd_classifier records
+  classifier: [],   // ESTD_classifier records
   components: [],   // Estd_components records
   recent: [],
   searchQ: '',
@@ -578,7 +578,7 @@ async function loadClassifier() {
     S.classifierMode = 'full';
     S.classifier = lazyResult.all;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
-    console.log(`[Estd_classifier full] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    console.log(`[ESTD_classifier full] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
     setConn(true, `${S.classifier.length} видов`);
     setTimeout(saveToCache, 0);
     renderAll();
@@ -591,7 +591,7 @@ async function loadClassifier() {
     S.classifierLoadedParents = new Set(['']);
     S.classifier = lazyResult;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
-    console.log(`[Estd_classifier lazy] ${lazyResult.length} классов за ${Math.round(performance.now()-t0)}мс`);
+    console.log(`[ESTD_classifier lazy] ${lazyResult.length} классов за ${Math.round(performance.now()-t0)}мс`);
     setConn(true, `${lazyResult.length} классов`);
     renderAll();
     return;
@@ -603,7 +603,7 @@ async function loadClassifier() {
     S.classifierMode = 'full';
     S.classifier = light;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
-    console.log(`[Estd_classifier full SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    console.log(`[ESTD_classifier full SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
     setConn(true, `${S.classifier.length} видов`);
     setTimeout(saveToCache, 0);
     renderAll();
@@ -613,15 +613,15 @@ async function loadClassifier() {
   // Попытка 3 — fetchTable (полный)
   try {
     const tables = await grist.docApi.listTables();
-    if (!tables.includes('Estd_classifier')) {
-      setConn(false, 'Таблица Estd_classifier не найдена');
+    if (!tables.includes('ESTD_classifier')) {
+      setConn(false, 'Таблица ESTD_classifier не найдена');
       return;
     }
-    const rows = await grist.docApi.fetchTable('Estd_classifier');
+    const rows = await grist.docApi.fetchTable('ESTD_classifier');
     S.classifierMode = 'full';
     S.classifier = rowsToRecords(rows);
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
-    console.log(`[Estd_classifier fetchTable] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
+    console.log(`[ESTD_classifier fetchTable] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
     setConn(true, `${S.classifier.length} видов`);
     setTimeout(saveToCache, 0);
     renderAll();
@@ -640,7 +640,7 @@ async function tryFetchClassifierLight() {
   if (!S.accessToken || !S.tokenBaseUrl) return null;
 
   try {
-    const sql = 'SELECT id, code, name, level, parent_code FROM Estd_classifier';
+    const sql = 'SELECT id, code, name, level, parent_code FROM ESTD_classifier';
     const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&auth=${S.accessToken}`;
     const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
     if (!res.ok) {
@@ -671,8 +671,8 @@ async function fetchClassifierByParent(parentCode) {
   if (S.accessToken && S.tokenBaseUrl) {
     try {
       const sql = parentCode === null
-        ? 'SELECT id, code, name, level, parent_code FROM Estd_classifier WHERE level = ?'
-        : 'SELECT id, code, name, level, parent_code FROM Estd_classifier WHERE parent_code = ?';
+        ? 'SELECT id, code, name, level, parent_code FROM ESTD_classifier WHERE level = ?'
+        : 'SELECT id, code, name, level, parent_code FROM ESTD_classifier WHERE parent_code = ?';
       const args = [parentCode === null ? TOP_LEVEL : parentCode];
       const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify(args))}&auth=${S.accessToken}`;
       const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
@@ -691,7 +691,7 @@ async function fetchClassifierByParent(parentCode) {
   if (typeof grist !== 'undefined') {
     try {
       const filter = parentCode === null ? { level: [TOP_LEVEL] } : { parent_code: [parentCode] };
-      const rows = await grist.docApi.fetchTable('Estd_classifier', { filters: filter });
+      const rows = await grist.docApi.fetchTable('ESTD_classifier', { filters: filter });
       const all = rowsToRecords(rows);
       if (!all.length) return null;
 
@@ -763,8 +763,8 @@ async function searchClassifierKinds(q) {
   try {
     const pattern = `%${q}%`;
     const sql = useAlt
-      ? 'SELECT id, code, name, level, parent_code FROM Estd_classifier WHERE level = ? AND (LOWER(code) LIKE ? OR LOWER(code) LIKE ? OR LOWER(name) LIKE ?) LIMIT 30'
-      : 'SELECT id, code, name, level, parent_code FROM Estd_classifier WHERE level = ? AND (LOWER(code) LIKE ? OR LOWER(name) LIKE ?) LIMIT 30';
+      ? 'SELECT id, code, name, level, parent_code FROM ESTD_classifier WHERE level = ? AND (LOWER(code) LIKE ? OR LOWER(code) LIKE ? OR LOWER(name) LIKE ?) LIMIT 30'
+      : 'SELECT id, code, name, level, parent_code FROM ESTD_classifier WHERE level = ? AND (LOWER(code) LIKE ? OR LOWER(name) LIKE ?) LIMIT 30';
     const args = useAlt ? [LEAF_LEVEL, pattern, `%${qAlt}%`, pattern] : [LEAF_LEVEL, pattern, pattern];
     const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify(args))}&auth=${S.accessToken}`;
     const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
@@ -789,7 +789,7 @@ async function searchClassifierKinds(q) {
 async function fetchClassifierNodeByCode(code) {
   if (!S.accessToken || !S.tokenBaseUrl) return null;
   try {
-    const sql = 'SELECT id, code, name, level, parent_code FROM Estd_classifier WHERE code = ? LIMIT 1';
+    const sql = 'SELECT id, code, name, level, parent_code FROM ESTD_classifier WHERE code = ? LIMIT 1';
     const url = `${S.tokenBaseUrl}/sql?q=${encodeURIComponent(sql)}&args=${encodeURIComponent(JSON.stringify([code]))}&auth=${S.accessToken}`;
     const res = await fetch(url, { credentials: 'omit', mode: 'cors' });
     if (!res.ok) return null;
@@ -1176,7 +1176,7 @@ function renderBrowse() {
     return;
   }
   if (!S.classifier.length) {
-    body.innerHTML = `<div class="empty">Классификатор не загружен.<br>Проверьте таблицу Estd_classifier в Grist.</div>`;
+    body.innerHTML = `<div class="empty">Классификатор не загружен.<br>Проверьте таблицу ESTD_classifier в Grist.</div>`;
     return;
   }
 
