@@ -330,7 +330,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.8</footer>
+<footer class="ver-footer">v0.9</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1220,16 +1220,22 @@ function renderRegistered() {
   body.innerHTML = `<table class="reg-table">
     <colgroup>
       <col style="width:1%">
-      <col style="width:50%">
-      <col style="width:39%">
+      <col style="width:32%">
+      <col style="width:17%">
+      <col style="width:30%">
       <col style="width:10%">
     </colgroup>
     <thead>
       <tr>
-        <th style="border-right:1px solid var(--brd2)">Номер ЕСТД</th>
+        <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Зарегистрированный компонент</th>
+        <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Первичное применение</th>
+        <th rowspan="2"></th>
+      </tr>
+      <tr class="sub-header">
+        <th style="border-right:1px solid var(--brd)">Номер ЕСТД</th>
         <th style="border-right:1px solid var(--brd2)">Наименование</th>
-        <th style="border-right:1px solid var(--brd2)">Первичное применение</th>
-        <th>Создан</th>
+        <th style="border-right:1px solid var(--brd)">Номер</th>
+        <th style="border-right:1px solid var(--brd2)">Наименование</th>
       </tr>
     </thead>
     <tbody>
@@ -1247,11 +1253,11 @@ function renderRegistered() {
         const editingDN = editing && S.editing.mode === 'ref';
         const editingCompName = editing && S.editing.mode === 'compName';
 
-        // Ячейка первичного применения (только ссылка на существующий компонент)
-        let useCell;
+        // Ячейка номера первичного применения (поиск/редактирование) и отдельная ячейка наименования (зеркало)
+        let useDnCell, useNameCell;
         if (editingDN) {
           const selectedDN = S.editing.selUse ? S.editing.selUse.decimal_number : '';
-          useCell = `<div class="cell-content">
+          useDnCell = `<div class="cell-content">
             <div class="cell-edit-wrap">
               <input class="cell-edit-input mono" id="editDNInput-${c.id}" placeholder="Поиск..." autocomplete="off" value="${esc(selectedDN)}" oninput="onEditDNInput(${c.id})" onkeydown="onEditKey(event, ${c.id})">
               <div class="cell-edit-drop" id="editDNDrop-${c.id}"></div>
@@ -1263,13 +1269,16 @@ function renderRegistered() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>`;
+          const previewName = S.editing.selUse ? S.editing.selUse.name : '';
+          useNameCell = `<div class="cell-content"><span class="cell-text reg-use-name" id="editDNNamePreview-${c.id}">${previewName ? esc(previewName) : '—'}</span></div>`;
         } else {
-          useCell = `<div class="cell-content">
-            <span class="cell-text reg-use-name">${linked ? `<span class="reg-use-dn">${esc(linked.decimal_number)}</span> — ${esc(linked.name)}` : '—'}</span>
+          useDnCell = `<div class="cell-content">
+            <span class="cell-text reg-use-dn">${linked ? esc(linked.decimal_number) : '—'}</span>
             <button class="cell-edit-btn" onclick="startEditDN(${c.id})" title="Редактировать">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
             </button>
           </div>`;
+          useNameCell = `<div class="cell-content"><span class="cell-text reg-use-name">${linked ? esc(linked.name) : '—'}</span></div>`;
         }
 
         // Ячейка наименования компонента (Номенклатура)
@@ -1295,8 +1304,9 @@ function renderRegistered() {
 
         return `<tr>
           <td class="reg-dn" style="border-right:1px solid var(--brd)">${esc(c.estd_number||'—')}</td>
-          <td class="editable-cell" style="border-right:1px solid var(--brd);text-align:left">${compNameCell}</td>
-          <td class="editable-cell" style="border-right:1px solid var(--brd)">${useCell}</td>
+          <td class="editable-cell" style="border-right:1px solid var(--brd2);text-align:left">${compNameCell}</td>
+          <td class="editable-cell" style="border-right:1px solid var(--brd)">${useDnCell}</td>
+          <td class="editable-cell" style="border-right:1px solid var(--brd2)">${useNameCell}</td>
           <td class="reg-author">
             <div class="avatar" data-tooltip="${esc(tooltipText)}" style="background:${author ? avatarColor(author) : 'var(--brd2)'}">${esc(initial)}</div>
           </td>
@@ -1388,6 +1398,8 @@ function pickEditDN(rowId, rec) {
   document.getElementById(`editDNInput-${rowId}`).value = `${rec.decimal_number} — ${rec.name}`;
   document.getElementById(`editDNDrop-${rowId}`).className = 'cell-edit-drop';
   document.getElementById(`editSaveBtn-${rowId}`).disabled = false;
+  const preview = document.getElementById(`editDNNamePreview-${rowId}`);
+  if (preview) preview.textContent = rec.name || '—';
 }
 
 function onEditKey(e, rowId) {
