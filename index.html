@@ -128,9 +128,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-add:hover{opacity:.88}
 .btn-add:active{transform:scale(.98)}
 .btn-add:disabled{opacity:.35;cursor:not-allowed}
-.btn-sm{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);color:var(--tx2);font-size:11px;padding:3px 9px;cursor:pointer;font-family:inherit;transition:background .1s}
-.btn-sm:hover{background:var(--surf3)}
-.btn-sm:disabled{opacity:.3;cursor:default}
 
 /* ── EMPTY / MISC ── */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px 0;color:var(--tx3);font-size:12px;text-align:center}
@@ -336,7 +333,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 </main>
 </div>
 
-<footer class="ver-footer">v0.5</footer>
+<footer class="ver-footer">v0.6</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -345,13 +342,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 const S = {
   classifier: [],   // ESTD_classifier records
   components: [],   // Estd_components records
+  masterComponents: [], // Components records (мастер-таблица изделий, для "Первичное применение")
   recent: [],
   // browse
   browseLevel: null, // null=classes, code=drilled
   browsePath: [],    // [{code,name,level}]
   // form
   selKind: null,     // {id, code, name}
-  selUse: null,      // {id, estd_number, name}
+  selUse: null,      // {id, decimal_number, name} — запись из таблицы Components
   showExtPicker: false,  // true когда открыт список «наименование операции» для текущего листа
   pendingLeafKind: null, // лист, выбранный до открытия списка операций (для возврата)
   kindAcIdx: -1,
@@ -486,6 +484,7 @@ function initGrist() {
   Promise.all([
     loadClassifier(),
     loadComponents(),
+    loadMasterComponents(),
   ]).then(() => {
     console.log(`[init] полная загрузка за ${Math.round(performance.now() - t0)}мс`);
   });
@@ -502,6 +501,18 @@ async function loadComponents() {
     firstComponentsLoadDone = true;
     console.log(`[Estd_components] ${S.components.length} за ${Math.round(performance.now()-t0)}мс`);
     renderAll();
+  } catch(e) {
+    console.error('Ошибка загрузки Components:', e);
+  }
+}
+
+async function loadMasterComponents() {
+  if (typeof grist === 'undefined') return;
+  const t0 = performance.now();
+  try {
+    const rows = await grist.docApi.fetchTable('Components');
+    S.masterComponents = rowsToRecords(rows);
+    console.log(`[Components] ${S.masterComponents.length} за ${Math.round(performance.now()-t0)}мс`);
   } catch(e) {
     console.error('Ошибка загрузки Components:', e);
   }
@@ -998,7 +1009,7 @@ function renderBrowse() {
         const ext = getNodeChildren(cur.code);
         const cancelRow = `<div class="sub-row" onclick="toggleExtPicker()">
           <span class="sub-row-code">←</span>
-          <span class="sub-row-name">Отменить — вернуться к регистрации без наименования операции</span>
+          <span class="sub-row-name">Вернуться к регистрации без наименования операции</span>
         </div>`;
         body.innerHTML = `<div class="sub-list">${cancelRow}${ext.map(c => `
           <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
@@ -1006,9 +1017,13 @@ function renderBrowse() {
             <span class="sub-row-name">${esc(c.name)}</span>
           </div>`).join('')}</div>` + (ext.length ? '' : `<div class="empty">Нет вариантов наименования операции для этого метода</div>`);
       } else {
-        stepEl.innerHTML = `<span>${esc(levelLabel(LEAF_LEVEL))}</span>` +
-          (canExtend ? `<button class="btn-sm" onclick="toggleExtPicker()">+ Добавить наименование операции</button>` : '');
-        body.innerHTML = '';
+        stepEl.innerHTML = `<span>${esc(levelLabel(LEAF_LEVEL))}</span>`;
+        body.innerHTML = canExtend ? `<div class="sub-list">
+          <div class="sub-row" onclick="toggleExtPicker()">
+            <span class="sub-row-code">+</span>
+            <span class="sub-row-name">Добавить наименование операции</span>
+          </div>
+        </div>` : '';
       }
     } else {
       stepEl.innerHTML = `<span>${esc(levelLabel(cur.level))}</span>`;
@@ -1186,9 +1201,9 @@ function renderRegistered() {
     return;
   }
 
-  // Строим lookup id→запись для primary_use
+  // Строим lookup id→запись для primary_use (таблица Components)
   const byId = {};
-  S.components.forEach(c => { byId[c.id] = c; });
+  S.masterComponents.forEach(c => { byId[c.id] = c; });
 
   body.innerHTML = `<table class="reg-table">
     <colgroup>
@@ -1223,7 +1238,7 @@ function renderRegistered() {
         // Ячейка первичного применения (только ссылка на существующий компонент)
         let useCell;
         if (editingDN) {
-          const selectedDN = S.editing.selUse ? S.editing.selUse.estd_number : '';
+          const selectedDN = S.editing.selUse ? S.editing.selUse.decimal_number : '';
           useCell = `<div class="cell-content">
             <div class="cell-edit-wrap">
               <input class="cell-edit-input mono" id="editDNInput-${c.id}" placeholder="Поиск..." autocomplete="off" value="${esc(selectedDN)}" oninput="onEditDNInput(${c.id})" onkeydown="onEditKey(event, ${c.id})">
@@ -1238,7 +1253,7 @@ function renderRegistered() {
           </div>`;
         } else {
           useCell = `<div class="cell-content">
-            <span class="cell-text reg-use-name">${linked ? `<span class="reg-use-dn">${esc(linked.estd_number)}</span> — ${esc(linked.name)}` : '—'}</span>
+            <span class="cell-text reg-use-name">${linked ? `<span class="reg-use-dn">${esc(linked.decimal_number)}</span> — ${esc(linked.name)}` : '—'}</span>
             <button class="cell-edit-btn" onclick="startEditDN(${c.id})" title="Редактировать">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
             </button>
@@ -1336,17 +1351,16 @@ function onEditDNInput(rowId) {
   const drop = document.getElementById(`editDNDrop-${rowId}`);
   if (!q) { drop.className = 'cell-edit-drop'; return; }
 
-  const items = S.components.filter(r =>
-    r.id !== rowId && // нельзя сослаться на себя
-    ((r.estd_number||'').toLowerCase().includes(q) ||
-     (r.name||'').toLowerCase().includes(q))
+  const items = S.masterComponents.filter(r =>
+    (r.decimal_number||'').toLowerCase().includes(q) ||
+    (r.name||'').toLowerCase().includes(q)
   ).slice(0, 20);
 
   if (!items.length) { drop.className = 'cell-edit-drop'; return; }
 
   drop.innerHTML = items.map((r,i) => `
     <div class="ac-item" data-idx="${i}" style="text-align:left">
-      <span class="ac-code">${esc(r.estd_number||'')}</span>
+      <span class="ac-code">${esc(r.decimal_number||'')}</span>
       <span class="ac-name">${esc(r.name||'')}</span>
     </div>`).join('');
   drop.querySelectorAll('.ac-item').forEach((el, i) => {
@@ -1359,7 +1373,7 @@ function onEditDNInput(rowId) {
 
 function pickEditDN(rowId, rec) {
   S.editing.selUse = rec;
-  document.getElementById(`editDNInput-${rowId}`).value = `${rec.estd_number} — ${rec.name}`;
+  document.getElementById(`editDNInput-${rowId}`).value = `${rec.decimal_number} — ${rec.name}`;
   document.getElementById(`editDNDrop-${rowId}`).className = 'cell-edit-drop';
   document.getElementById(`editSaveBtn-${rowId}`).disabled = false;
 }
@@ -1434,8 +1448,8 @@ function onUseInput() {
   S.useAcIdx = -1;
   document.getElementById('useHint').textContent = 'Не выбрано';
   if (!q) { hideDrop('useDrop'); return; }
-  const items = S.components.filter(r =>
-    (r.estd_number||'').toLowerCase().includes(q) ||
+  const items = S.masterComponents.filter(r =>
+    (r.decimal_number||'').toLowerCase().includes(q) ||
     (r.name||'').toLowerCase().includes(q)
   ).slice(0, 20);
   renderAcComponents('useDrop', items, i => pickUse(items[i]));
@@ -1450,8 +1464,8 @@ function onUseKey(e) {
 
 function pickUse(r) {
   S.selUse = r;
-  document.getElementById('useInput').value = `${r.estd_number} — ${r.name}`;
-  document.getElementById('useHint').textContent = `Связан с ${r.estd_number}`;
+  document.getElementById('useInput').value = `${r.decimal_number} — ${r.name}`;
+  document.getElementById('useHint').textContent = `Связан с ${r.decimal_number}`;
   hideDrop('useDrop');
 }
 
@@ -1643,7 +1657,7 @@ function renderAcComponents(dropId, items, onPick) {
   if (!items.length) { hideDrop(dropId); return; }
   drop.innerHTML = items.map((r,i) => `
     <div class="ac-item" data-idx="${i}">
-      <span class="ac-code">${esc(r.estd_number||'')}</span>
+      <span class="ac-code">${esc(r.decimal_number||'')}</span>
       <span class="ac-name">${esc(r.name||'')}</span>
     </div>`).join('');
   drop.querySelectorAll('.ac-item').forEach((el,i) => {
