@@ -63,11 +63,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 /* Путь выбора — шапка браузера */
 .browse-summary{padding:14px 16px;background:var(--surf);display:flex;flex-direction:column;gap:8px}
-.bs-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.bs-main{display:flex;align-items:center;gap:16px}
 .bs-code{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--tx);line-height:1;flex-shrink:0;text-align:center;min-width:120px}
 .bs-path{flex:1;min-width:0}
 .bs-row{font-size:15px;color:var(--tx);line-height:1.4}
-.browse-step{font-size:14px;font-weight:700;color:var(--tx);min-height:17px;text-align:right}
+.browse-step{font-size:14px;font-weight:700;color:var(--tx);min-height:17px}
 .browse-step:empty{display:none}
 
 /* Карточки классов — строки */
@@ -253,11 +253,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <div class="ac-drop" id="browserKindDrop" style="top:32px;left:12px;right:12px"></div>
       </div>
       <div class="browse-summary" id="browseSummary">
-        <div class="bs-top">
+        <div class="browse-step" id="browseStep"></div>
+        <div class="bs-main">
           <div class="bs-code" id="bsCode"></div>
-          <div class="browse-step" id="browseStep"></div>
+          <div class="bs-path" id="bsPath"></div>
         </div>
-        <div class="bs-path" id="bsPath"></div>
       </div>
       <div class="pb" id="browseBody"></div>
     </div>
@@ -330,7 +330,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.7</footer>
+<footer class="ver-footer">v0.8</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -998,39 +998,45 @@ function renderBrowse() {
 
   const cur = path[path.length-1];
 
-  if (isTerminalCode(cur.code)) {
-    if (cur.level === LEAF_LEVEL) {
-      const canExtend = hasExtOptions(cur.code);
-      if (S.showExtPicker) {
-        stepEl.innerHTML = `<span>${esc(levelLabel(EXT_LEVEL))}</span>`;
-        const ext = getNodeChildren(cur.code);
-        const cancelRow = `<div class="sub-row" onclick="toggleExtPicker()">
-          <span class="sub-row-code">←</span>
-          <span class="sub-row-name">Вернуться к регистрации без наименования операции</span>
-        </div>`;
-        body.innerHTML = `<div class="sub-list">${cancelRow}${ext.map(c => `
-          <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
-            <span class="sub-row-code">${c.code}</span>
-            <span class="sub-row-name">${esc(c.name)}</span>
-          </div>`).join('')}</div>` + (ext.length ? '' : `<div class="empty">Нет вариантов наименования операции для этого метода</div>`);
-      } else {
-        stepEl.innerHTML = `<span>${esc(levelLabel(LEAF_LEVEL))}</span>`;
-        body.innerHTML = canExtend ? `<div class="sub-list">
-          <div class="sub-row" onclick="toggleExtPicker()">
-            <span class="sub-row-code">+</span>
-            <span class="sub-row-name">Добавить наименование операции</span>
-          </div>
-        </div>` : '';
-      }
-    } else {
-      stepEl.innerHTML = `<span>${esc(levelLabel(cur.level))}</span>`;
-      body.innerHTML = `<div class="sub-list">
-        <div class="sub-row" onclick="browseUp(${path.length - 1})">
-          <span class="sub-row-code">←</span>
-          <span class="sub-row-name">Вернуться к 5-значному коду без наименования операции</span>
-        </div>
+  // Лист-метод (5 цифр) всегда обрабатывается этой веткой — даже если для него
+  // уже материализован настоящий ESTD_classifier-узел расширенного кода
+  // (тогда isTerminalCode(leafCode) перестаёт быть true, т.к. у листа появляется
+  // реальный ребёнок с parent_code = leafCode), иначе при возврате к листу
+  // через breadcrumb пропадает возможность зарегистрировать его без расширения.
+  if (cur.level === LEAF_LEVEL) {
+    const canExtend = hasExtOptions(cur.code);
+    if (S.showExtPicker) {
+      stepEl.innerHTML = `<span>${esc(levelLabel(EXT_LEVEL))}</span>`;
+      const ext = getNodeChildren(cur.code);
+      const cancelRow = `<div class="sub-row" onclick="toggleExtPicker()">
+        <span class="sub-row-code">←</span>
+        <span class="sub-row-name">Вернуться к регистрации без наименования операции</span>
       </div>`;
+      body.innerHTML = `<div class="sub-list">${cancelRow}${ext.map(c => `
+        <div class="sub-row" onclick="browseDrill('${c.code}','${esc(c.name)}','${c.level}')">
+          <span class="sub-row-code">${c.code}</span>
+          <span class="sub-row-name">${esc(c.name)}</span>
+        </div>`).join('')}</div>` + (ext.length ? '' : `<div class="empty">Нет вариантов наименования операции для этого метода</div>`);
+    } else {
+      stepEl.innerHTML = `<span>${esc(levelLabel(LEAF_LEVEL))}</span>`;
+      body.innerHTML = canExtend ? `<div class="sub-list">
+        <div class="sub-row" onclick="toggleExtPicker()">
+          <span class="sub-row-code">+</span>
+          <span class="sub-row-name">Добавить наименование операции</span>
+        </div>
+      </div>` : '';
     }
+    return;
+  }
+
+  if (isTerminalCode(cur.code)) {
+    stepEl.innerHTML = `<span>${esc(levelLabel(cur.level))}</span>`;
+    body.innerHTML = `<div class="sub-list">
+      <div class="sub-row" onclick="browseUp(${path.length - 1})">
+        <span class="sub-row-code">←</span>
+        <span class="sub-row-name">Вернуться к 5-значному коду без наименования операции</span>
+      </div>
+    </div>`;
     return;
   }
 
@@ -1099,7 +1105,8 @@ function browseUp(idx) {
   S.showExtPicker = false;
   S.pendingLeafKind = null;
   const cur = S.browsePath[S.browsePath.length-1];
-  S.selKind = (cur && isTerminalCode(cur.code)) ? (S.classifier.find(r => r.code === cur.code) || null) : null;
+  S.selKind = (cur && (cur.level === LEAF_LEVEL || isTerminalCode(cur.code)))
+    ? (S.classifier.find(r => r.code === cur.code) || null) : null;
   updatePreview();
   renderBrowse();
   renderRegistered();
@@ -1184,8 +1191,9 @@ function renderRegistered() {
 
   // показываем только если выбран терминальный вид и не открыт список наименований операций
   const path = S.browsePath;
-  if (!path.length || !isTerminalCode(path[path.length-1].code) ||
-      (path[path.length-1].level === LEAF_LEVEL && S.showExtPicker)) {
+  const lastNode = path.length ? path[path.length-1] : null;
+  const isTerminalNode = lastNode && (lastNode.level === LEAF_LEVEL || isTerminalCode(lastNode.code));
+  if (!lastNode || !isTerminalNode || (lastNode.level === LEAF_LEVEL && S.showExtPicker)) {
     panel.style.display = 'none';
     return;
   }
