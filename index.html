@@ -23,12 +23,11 @@
 html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;color:var(--tx);background:var(--bg)}
 
 /* ── LAYOUT ── */
-.app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto 1fr;height:100vh;overflow:hidden}
-.topbar{grid-column:2;grid-row:1;background:var(--surf);border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:flex-end;padding:0 12px}
+.app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:1fr;height:100vh;overflow:hidden}
 .conn-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
 .conn-dot.ok{background:var(--grn)}
 .conn-lbl{font-size:11px;color:var(--tx3)}
-.topbar-status{display:flex;align-items:center;gap:6px;align-self:center;padding:0}
+.conn-status{position:fixed;left:10px;bottom:6px;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
 .ver-footer{position:fixed;right:10px;bottom:6px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
 
 /* ── SIDEBAR ── */
@@ -45,7 +44,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .sb-divider{height:1px;background:var(--brd);margin:6px 12px}
 
 /* ── MAIN ── */
-.main{grid-column:2;grid-row:2;overflow-y:auto;padding:0;display:flex;flex-direction:column;gap:0}
+.main{grid-column:2;grid-row:1;overflow-y:auto;padding:0;display:flex;flex-direction:column;gap:0}
 
 /* ── PANELS ── */
 .panel{background:var(--surf);border:1px solid var(--brd);border-radius:0;overflow:hidden}
@@ -63,12 +62,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .bc-sep{color:var(--tx3);font-size:11px}
 
 /* Путь выбора — шапка браузера */
-.browse-summary{padding:14px 16px;background:var(--surf);display:none;gap:16px;align-items:center;flex-direction:row}
-.browse-summary.on{display:flex}
+.browse-summary{padding:14px 16px;background:var(--surf);display:flex;flex-direction:column;gap:8px}
+.bs-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .bs-code{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--tx);line-height:1;flex-shrink:0;text-align:center;min-width:120px}
 .bs-path{flex:1;min-width:0}
 .bs-row{font-size:15px;color:var(--tx);line-height:1.4}
-.browse-step{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 16px;background:var(--surf2);border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);font-size:14px;font-weight:700;color:var(--tx);min-height:17px}
+.browse-step{font-size:14px;font-weight:700;color:var(--tx);min-height:17px;text-align:right}
 .browse-step:empty{display:none}
 
 /* Карточки классов — строки */
@@ -222,14 +221,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 <body>
 <div class="app">
 
-<!-- TOPBAR -->
-<header class="topbar">
-  <div class="topbar-status">
-    <div class="conn-dot" id="connDot"></div>
-    <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
-  </div>
-</header>
-
 <!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sb-section">
@@ -262,10 +253,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <div class="ac-drop" id="browserKindDrop" style="top:32px;left:12px;right:12px"></div>
       </div>
       <div class="browse-summary" id="browseSummary">
-        <div class="bs-code" id="bsCode"></div>
+        <div class="bs-top">
+          <div class="bs-code" id="bsCode"></div>
+          <div class="browse-step" id="browseStep"></div>
+        </div>
         <div class="bs-path" id="bsPath"></div>
       </div>
-      <div class="browse-step" id="browseStep"></div>
       <div class="pb" id="browseBody"></div>
     </div>
 
@@ -333,7 +326,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 </main>
 </div>
 
-<footer class="ver-footer">v0.6</footer>
+<div class="conn-status">
+  <div class="conn-dot" id="connDot"></div>
+  <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
+</div>
+<footer class="ver-footer">v0.7</footer>
 
 <script>
 /* ═══════════════════════════════════
@@ -1027,7 +1024,12 @@ function renderBrowse() {
       }
     } else {
       stepEl.innerHTML = `<span>${esc(levelLabel(cur.level))}</span>`;
-      body.innerHTML = '';
+      body.innerHTML = `<div class="sub-list">
+        <div class="sub-row" onclick="browseUp(${path.length - 1})">
+          <span class="sub-row-code">←</span>
+          <span class="sub-row-name">Вернуться к 5-значному коду без наименования операции</span>
+        </div>
+      </div>`;
     }
     return;
   }
@@ -1063,9 +1065,11 @@ function toggleExtPicker() {
 
 function renderBrowseSummary() {
   const path = S.browsePath;
-  const summary = document.getElementById('browseSummary');
-  if (!path.length) { summary.className = 'browse-summary'; return; }
-  summary.className = 'browse-summary on';
+  if (!path.length) {
+    document.getElementById('bsCode').textContent = '';
+    document.getElementById('bsPath').innerHTML = '';
+    return;
+  }
 
   const cur = path[path.length-1];
   document.getElementById('bsCode').textContent = cur.code;
