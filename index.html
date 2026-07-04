@@ -176,36 +176,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 /* Author avatar */
 .reg-author{padding:6px 8px;text-align:center}
 .avatar{display:inline-flex;align-items:center;justify-content:center;width:26px;height:22px;border-radius:4pt;color:#fff;font-size:11px;font-weight:600;font-family:inherit;cursor:default;position:relative;user-select:none;margin:0 auto}
-.avatar[data-tooltip]:hover::after{
-  content:attr(data-tooltip);
-  position:absolute;
-  bottom:calc(100% + 6px);
-  left:50%;
-  transform:translateX(-50%);
-  background:var(--tx);
-  color:#fff;
-  padding:6px 10px;
-  border-radius:var(--r);
-  font-size:11px;
-  font-weight:400;
-  white-space:pre;
-  z-index:1000;
-  box-shadow:0 4px 12px rgba(0,0,0,.15);
-  pointer-events:none;
-  text-align:left;
-  letter-spacing:0;
-}
-.avatar[data-tooltip]:hover::before{
-  content:'';
-  position:absolute;
-  bottom:calc(100% + 1px);
-  left:50%;
-  transform:translateX(-50%);
-  border:5px solid transparent;
-  border-top-color:var(--tx);
-  z-index:1000;
-  pointer-events:none;
-}
+
+/* Global JS tooltip — not clipped by overflow:hidden parents */
+#gTooltip{position:fixed;background:var(--tx);color:#fff;padding:6px 10px;border-radius:var(--r);font-size:11px;font-weight:400;white-space:pre;z-index:9999;pointer-events:none;display:none;box-shadow:0 4px 12px rgba(0,0,0,.15);line-height:1.4}
 
 /* ── BROWSER KIND SEARCH ── */
 .browser-search-wrap{padding:8px 12px;position:relative;background:var(--surf)}
@@ -331,7 +304,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.10</footer>
+<footer class="ver-footer">v0.11</footer>
+<div id="gTooltip"></div>
 
 <script>
 /* ═══════════════════════════════════
@@ -498,6 +472,7 @@ async function loadComponents() {
     refreshPrefixList();
     firstComponentsLoadDone = true;
     console.log(`[Estd_components] ${S.components.length} за ${Math.round(performance.now()-t0)}мс`);
+    setConn(true, `${S.components.length} компонентов`);
     renderAll();
   } catch(e) {
     console.error('Ошибка загрузки Components:', e);
@@ -892,11 +867,29 @@ function renderSidebar() {
       </div>`).join('')
     : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">Нет данных</div>`;
 
-  recEl.innerHTML = S.recent.length
-    ? S.recent.map(r => `<div class="sb-item" onclick="goTo(${r.id})">
-        <span class="sb-code">${esc(r.estd_number||'—')}</span>
-        <span class="sb-name">${esc(r.name||'—')}</span>
-      </div>`).join('')
+  const recent8 = [...S.components]
+    .filter(c => c.estd_number)
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+    .slice(0, 8);
+
+  recEl.innerHTML = recent8.length
+    ? recent8.map(c => {
+        const author = c.created_by || '';
+        const ts = c.created_at;
+        const dateStr = (ts && !isNaN(ts)) ? new Date(ts * 1000).toLocaleString('ru-RU') : '';
+        const initial = author ? author.trim().charAt(0).toUpperCase() : '?';
+        const tipParts = [];
+        if (c.name) tipParts.push(c.name);
+        tipParts.push(author || 'Автор неизвестен');
+        if (dateStr) tipParts.push(dateStr);
+        const tip = esc(tipParts.join('\n'));
+        return `<div class="sb-item" onclick="goTo(${c.id})">
+          <span class="sb-fav-code" style="flex:1">${esc(c.estd_number)}</span>
+          <div class="avatar" data-tip="${tip}"
+               onmouseenter="showTooltip(this)" onmouseleave="hideTooltip()"
+               style="background:${author ? avatarColor(author) : 'var(--brd2)'};flex-shrink:0;margin:0">${esc(initial)}</div>
+        </div>`;
+      }).join('')
     : `<div style="padding:4px 12px;font-size:11px;color:var(--tx3)">—</div>`;
 }
 
@@ -1331,7 +1324,7 @@ function renderRegistered() {
           <td class="editable-cell" style="border-right:1px solid var(--brd)">${useDnCell}</td>
           <td class="editable-cell" style="border-right:1px solid var(--brd2)">${useNameCell}</td>
           <td class="reg-author">
-            <div class="avatar" data-tooltip="${esc(tooltipText)}" style="background:${author ? avatarColor(author) : 'var(--brd2)'}">${esc(initial)}</div>
+            <div class="avatar" data-tip="${esc(tooltipText)}" onmouseenter="showTooltip(this)" onmouseleave="hideTooltip()" style="background:${author ? avatarColor(author) : 'var(--brd2)'}">${esc(initial)}</div>
           </td>
         </tr>`;
       }).join('')}
@@ -1774,6 +1767,27 @@ document.addEventListener('click', e => {
    UTILS
 ═══════════════════════════════════ */
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function showTooltip(el) {
+  const t = document.getElementById('gTooltip');
+  const text = el.getAttribute('data-tip') || '';
+  if (!text) return;
+  t.textContent = text;
+  t.style.display = 'block';
+  const r = el.getBoundingClientRect();
+  const tw = t.offsetWidth;
+  const th = t.offsetHeight;
+  let top = r.top - th - 8;
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(4, Math.min(left, window.innerWidth - tw - 4));
+  if (top < 4) top = r.bottom + 8;
+  t.style.top = top + 'px';
+  t.style.left = left + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('gTooltip').style.display = 'none';
+}
 
 /* ═══════════════════════════════════
    BOOT
