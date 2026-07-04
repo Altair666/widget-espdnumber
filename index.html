@@ -400,7 +400,6 @@ function loadFromCache() {
     S.classifier = data.classifier;
     const ageSec = Math.round((Date.now() - data.timestamp) / 1000);
     console.log(`[cache] классификатор: ${S.classifier.length} записей, возраст ${ageSec}с`);
-    updateStatusLine();
     return true;
   } catch(e) {
     console.warn('[cache] чтение неудачно:', e);
@@ -530,7 +529,7 @@ async function loadClassifier() {
     S.classifier = lazyResult.all;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESTD_classifier full] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    updateStatusLine();
+    // status updated only from loadComponents
     setTimeout(saveToCache, 0);
     renderAll();
     return;
@@ -543,7 +542,7 @@ async function loadClassifier() {
     S.classifier = lazyResult;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESTD_classifier lazy] ${lazyResult.length} классов за ${Math.round(performance.now()-t0)}мс`);
-    updateStatusLine();
+    // status updated only from loadComponents
     renderAll();
     return;
   }
@@ -555,7 +554,7 @@ async function loadClassifier() {
     S.classifier = light;
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESTD_classifier full SQL] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    updateStatusLine();
+    // status updated only from loadComponents
     setTimeout(saveToCache, 0);
     renderAll();
     return;
@@ -573,7 +572,7 @@ async function loadClassifier() {
     S.classifier = rowsToRecords(rows);
     S.classifier.sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true}));
     console.log(`[ESTD_classifier fetchTable] ${S.classifier.length} за ${Math.round(performance.now()-t0)}мс`);
-    updateStatusLine();
+    // status updated only from loadComponents
     setTimeout(saveToCache, 0);
     renderAll();
   } catch(e) {
@@ -766,13 +765,6 @@ function setConn(ok, lbl) {
   document.getElementById('connLbl').textContent = lbl;
 }
 
-function updateStatusLine() {
-  if (firstComponentsLoadDone) {
-    setConn(true, `${S.components.length} компонентов`);
-  } else {
-    setConn(true, `${S.classifier.length} видов`);
-  }
-}
 
 /* ═══════════════════════════════════
    SERIAL / NEXT FREE
