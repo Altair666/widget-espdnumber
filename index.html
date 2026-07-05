@@ -249,7 +249,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.2.2</footer>
+<footer class="ver-footer">v0.2.3</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -673,7 +673,7 @@ function renderRegistered() {
       <tr>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Зарегистрированный компонент</th>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Первичное применение</th>
-        <th rowspan="2"></th>
+        <th rowspan="2" style="vertical-align:middle">Создан</th>
       </tr>
       <tr class="sub-header">
         <th style="border-right:1px solid var(--brd)">Номер ЕСПД</th>
@@ -702,7 +702,7 @@ function renderRegRow(c, idx, total, byId) {
   const ts = c.created_at;
   const dateStr = (ts && !isNaN(ts)) ? new Date(ts * 1000).toLocaleString('ru-RU') : '';
   const initial = author ? author.trim().charAt(0).toUpperCase() : '?';
-  const tip = esc([c.name||'', author||'Автор неизвестен', dateStr].filter(Boolean).join('\n'));
+  const tip = esc([author||'Автор неизвестен', dateStr].filter(Boolean).join('\n'));
   const editing = S.editing && S.editing.rowId === c.id;
   const dropUp = idx >= total - 2;
 
