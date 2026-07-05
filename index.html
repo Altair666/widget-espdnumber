@@ -18,7 +18,7 @@
   --red:#991B1B;--red-bg:#FEF2F2;--red-brd:#FECACA;
   --mono:'IBM Plex Mono',monospace;
   --sans:'IBM Plex Sans',sans-serif;
-  --r:4pt;
+  --r:4pt;--r2:4pt;
 }
 html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;color:var(--tx);background:var(--bg)}
 .app{height:100vh;overflow:hidden;display:flex;flex-direction:column}
@@ -36,7 +36,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .panel+.panel{border-top:none}
 .ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
 .ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
-.pb{padding:12px 14px}
+.pb{padding:10px 12px}
 
 /* ── FORM ── */
 .form-row{display:grid;gap:10px;margin-bottom:10px}
@@ -49,10 +49,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .form-input[readonly]:focus{border-color:var(--brd)}
 .form-input::placeholder{color:var(--tx3)}
 .form-input.mono{font-family:var(--mono)}
-.form-input.optional-empty{border-style:dashed;background:var(--surf)}
-.opt-badge{font-size:9px;color:var(--tx3);font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px}
+.form-select{height:32px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;width:100%;cursor:pointer;transition:border-color .15s}
+.form-select:focus{border-color:var(--acc)}
 
-/* autocomplete */
+/* autocomplete (for primary use only) */
 .ac-wrap{position:relative}
 .ac-drop{position:absolute;top:34px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:100;max-height:180px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .ac-drop.on{display:block}
@@ -61,19 +61,21 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .ac-code{font-family:var(--mono);font-size:10px;color:var(--acc);flex-shrink:0}
 .ac-name{font-size:11px;color:var(--tx);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* preview number */
-.preview-number{font-family:var(--mono);font-size:20px;font-weight:500;background:var(--grn-bg);border:1px solid var(--grn-brd);border-radius:var(--r);padding:10px 14px;color:var(--grn);margin-bottom:10px;letter-spacing:.04em;min-height:44px;display:flex;align-items:center}
-.preview-number.empty{background:var(--surf3);border-color:var(--brd);color:var(--tx3)}
+/* preview */
+.preview-row{display:flex;align-items:stretch;gap:10px;margin-bottom:10px}
+.preview-box{flex:1;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.preview-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)}
+.preview-val{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--tx)}
+.preview-val.ready{color:var(--acc)}
+.preview-box.next{background:var(--grn-bg);border-color:var(--grn-brd)}
+.preview-box.next .preview-lbl{color:var(--grn)}
+.preview-box.next .preview-val{color:var(--grn)}
 
 /* register button */
-.btn-add{display:flex;align-items:center;justify-content:center;gap:6px;background:#16b378;color:#fff;border:none;border-radius:var(--r);padding:9px 16px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s;width:100%;margin-top:4px}
+.btn-add{display:flex;align-items:center;justify-content:center;gap:6px;background:#16b378;color:#fff;border:none;border-radius:var(--r);padding:9px 16px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s;width:100%}
 .btn-add:hover{opacity:.88}
 .btn-add:active{transform:scale(.98)}
 .btn-add:disabled{opacity:.35;cursor:not-allowed}
-
-/* divider inside form */
-.form-divider{height:1px;background:var(--brd);margin:10px 0}
-.optional-label{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
 
 /* ── REGISTERED TABLE ── */
 .reg-table{width:100%;border-collapse:collapse;font-size:12px}
@@ -90,9 +92,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-use-name{font-size:12px;color:var(--tx2)}
 .reg-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 .reg-filter-bar{padding:8px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px}
-.reg-filter-input{flex:1;height:28px;border:1px solid var(--brd);border-radius:var(--r);padding:0 9px 0 28px;font-family:inherit;font-size:12px;background:#fff;outline:none;color:var(--tx)}
-.reg-filter-input:focus{border-color:var(--acc)}
 .reg-filter-wrap{position:relative;flex:1}
+.reg-filter-input{width:100%;height:28px;border:1px solid var(--brd);border-radius:var(--r);padding:0 9px 0 28px;font-family:inherit;font-size:12px;background:#fff;outline:none;color:var(--tx)}
+.reg-filter-input:focus{border-color:var(--acc)}
 .reg-filter-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
 
 /* inline edit */
@@ -119,7 +121,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tag{display:inline-flex;align-items:center;font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4pt}
 .tag-blue{background:var(--acc-bg);color:var(--acc)}
 
-/* tooltip */
 #gTooltip{position:fixed;background:var(--tx);color:#fff;padding:6px 10px;border-radius:var(--r);font-size:11px;font-weight:400;white-space:pre;z-index:9999;pointer-events:none;display:none;box-shadow:0 4px 12px rgba(0,0,0,.15);line-height:1.4}
 
 ::-webkit-scrollbar{width:4px;height:4px}
@@ -138,78 +139,74 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     </div>
     <div class="pb">
 
-      <!-- Row 1: country | org | serial | edition -->
-      <div class="form-row" style="grid-template-columns:90px 110px 1fr 80px">
-        <!-- Country -->
+      <!-- Все 7 полей в одну строку -->
+      <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 1fr 72px 64px">
+
+        <!-- 1. Код страны -->
         <div class="form-group">
           <label class="form-label">Код страны</label>
           <input class="form-input mono" id="countryInput" list="countryList" value="RU"
-                 placeholder="RU" oninput="onCountryOrOrgChange()" autocomplete="off">
+                 placeholder="RU" oninput="onPrefixChange()" autocomplete="off">
           <datalist id="countryList">
             <option value="RU">
             <option value="EU">
             <option value="CN">
           </datalist>
         </div>
-        <!-- Org prefix -->
+
+        <!-- 2. Орг. префикс -->
         <div class="form-group">
           <label class="form-label">Орг. префикс</label>
           <input class="form-input mono" id="orgInput" list="orgList" value="ЛМАП"
-                 placeholder="ЛМАП" oninput="onCountryOrOrgChange()" autocomplete="off">
+                 placeholder="ЛМАП" oninput="onPrefixChange()" autocomplete="off">
           <datalist id="orgList">
             <option value="ЛМАП">
             <option value="ТСЕМ">
             <option value="ЭЛМАП">
           </datalist>
         </div>
-        <!-- Serial -->
+
+        <!-- 3. Рег. номер (счётчик) -->
         <div class="form-group">
           <label class="form-label">Рег. номер</label>
-          <input class="form-input mono" id="serialInput" placeholder="00001"
-                 oninput="onSerialChange()" autocomplete="off" maxlength="5">
-          <span class="form-hint" id="serialHint"></span>
+          <input class="form-input mono" id="serialDisplay" readonly placeholder="00001">
         </div>
-        <!-- Edition -->
+
+        <!-- 4. Издание (счётчик) -->
         <div class="form-group">
           <label class="form-label">Издание</label>
           <input class="form-input mono" id="editionDisplay" readonly placeholder="01">
         </div>
-      </div>
 
-      <!-- Divider: optional section -->
-      <div class="form-divider"></div>
-      <div class="optional-label">Дополнительные поля (необязательно)</div>
-
-      <!-- Row 2: doc type | doc num | part num -->
-      <div class="form-row" style="grid-template-columns:1fr 80px 70px">
-        <!-- Doc type -->
+        <!-- 5. Вид документа (из espd_classifier) -->
         <div class="form-group">
-          <label class="form-label">Код вида документа <span class="opt-badge">(из классификатора)</span></label>
-          <div class="ac-wrap">
-            <input class="form-input mono optional-empty" id="docTypeInput"
-                   placeholder="— не выбрано —"
-                   oninput="onDocTypeInput()" onkeydown="onDocTypeKey(event)"
-                   autocomplete="off">
-            <div class="ac-drop" id="docTypeDrop"></div>
-          </div>
-          <span class="form-hint" id="docTypeHint"></span>
+          <label class="form-label">Вид документа</label>
+          <select class="form-select" id="docTypeSelect" onchange="updatePreview()">
+            <option value="">— не указан —</option>
+          </select>
         </div>
-        <!-- Doc num -->
+
+        <!-- 6. Номер документа (счётчик) -->
         <div class="form-group">
-          <label class="form-label">№ документа</label>
+          <label class="form-label">№ докум.</label>
           <input class="form-input mono" id="docNumDisplay" readonly placeholder="—">
         </div>
-        <!-- Part num -->
+
+        <!-- 7. Номер части (счётчик) -->
         <div class="form-group">
           <label class="form-label">№ части</label>
           <input class="form-input mono" id="partNumDisplay" readonly placeholder="—">
         </div>
+
       </div>
 
-      <div class="form-divider"></div>
-
-      <!-- Preview number -->
-      <div class="preview-number empty" id="previewNumber">—</div>
+      <!-- Preview formed number -->
+      <div class="preview-row">
+        <div class="preview-box next" id="previewBox">
+          <span class="preview-lbl">Формируемый номер</span>
+          <span class="preview-val" id="previewVal">—</span>
+        </div>
+      </div>
 
       <!-- Name -->
       <div class="form-group" style="margin-bottom:10px">
@@ -239,7 +236,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   </div>
 
   <!-- REGISTERED COMPONENTS -->
-  <div class="panel" id="pRegistered">
+  <div class="panel">
     <div class="ph">
       <span class="ph-title">Зарегистрированные компоненты</span>
       <span class="tag tag-blue" id="regCount"></span>
@@ -268,14 +265,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
    STATE
 ═══════════════════════════════════ */
 const S = {
-  components: [],       // espd_components records
-  classifier: [],       // espd_classifier records (doc type codes)
-  masterComponents: [], // Components records (для "Первичное применение")
-  selUse: null,         // {id, decimal_number, name}
-  selDocType: null,     // {id, code, name} из espd_classifier
-  docTypeAcIdx: -1,
+  components: [],       // espd_components
+  classifier: [],       // espd_classifier (коды видов документов)
+  masterComponents: [], // Components (первичное применение)
+  selUse: null,
   useAcIdx: -1,
-  editing: null,        // { rowId, mode: 'ref'|'compName'|'useName', selUse }
+  editing: null,
 };
 
 /* ═══════════════════════════════════
@@ -291,7 +286,6 @@ function initGrist() {
   }
   grist.ready({ requiredAccess: 'full' });
   setConn(true, 'Загрузка…');
-
   grist.onRecords(() => { if (firstLoadDone) loadComponents(); });
 
   Promise.all([
@@ -325,8 +319,9 @@ async function loadClassifier() {
     S.classifier.sort((a,b) => String(a.code||'').localeCompare(String(b.code||''), undefined, {numeric:true}));
     console.log(`[espd_classifier] ${S.classifier.length} записей`);
   } catch(e) {
-    console.warn('espd_classifier не найдена (необязательно):', e.message);
+    console.warn('espd_classifier не найдена:', e.message);
   }
+  renderDocTypeSelect();
 }
 
 async function loadMasterComponents() {
@@ -355,6 +350,20 @@ function setConn(ok, lbl) {
 }
 
 /* ═══════════════════════════════════
+   DOC TYPE SELECT
+═══════════════════════════════════ */
+function renderDocTypeSelect() {
+  const sel = document.getElementById('docTypeSelect');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— не указан —</option>' +
+    S.classifier.map(r =>
+      `<option value="${esc(String(r.code||''))}">${esc(String(r.code||''))} — ${esc(r.name||'')}</option>`
+    ).join('');
+  if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  updatePreview();
+}
+
+/* ═══════════════════════════════════
    COUNTERS
 ═══════════════════════════════════ */
 function nextFreeSerial(country, org) {
@@ -379,8 +388,7 @@ function computeEdition(country, org, serial) {
     )
     .map(c => parseInt(c.edition||'0', 10))
     .filter(n => !isNaN(n) && n > 0);
-  const max = editions.length ? Math.max(...editions) : 0;
-  return String(max + 1).padStart(2,'0');
+  return String((editions.length ? Math.max(...editions) : 0) + 1).padStart(2,'0');
 }
 
 function computeDocNum(country, org, serial, edition, docTypeCode) {
@@ -440,71 +448,18 @@ function buildNumber(country, org, serial, edition, docTypeCode, docNum, partNum
 }
 
 /* ═══════════════════════════════════
-   FORM EVENTS
+   FORM
 ═══════════════════════════════════ */
-function onCountryOrOrgChange() {
-  const country = countryVal();
-  const org = orgVal();
-  if (country && org) {
-    const serial = nextFreeSerial(country, org);
-    document.getElementById('serialInput').value = serial || '';
-  }
-  onSerialChange();
-}
-
-function onSerialChange() {
-  updatePreview();
-}
-
 function countryVal() { return (document.getElementById('countryInput').value||'').trim().toUpperCase(); }
 function orgVal() { return (document.getElementById('orgInput').value||'').trim().replace(/\.+$/,''); }
-function serialVal() {
-  const v = (document.getElementById('serialInput').value||'').trim();
-  return v ? v.padStart(5,'0') : '';
-}
+
+function onPrefixChange() { updatePreview(); }
 
 function refreshOrgList() {
   const used = new Set(['ЛМАП','ТСЕМ','ЭЛМАП']);
   S.components.forEach(c => { if (c.org_prefix) used.add(String(c.org_prefix).trim()); });
   const dl = document.getElementById('orgList');
   if (dl) dl.innerHTML = Array.from(used).sort().map(p => `<option value="${esc(p)}">`).join('');
-}
-
-/* ── doc type autocomplete ── */
-function onDocTypeInput() {
-  const q = (document.getElementById('docTypeInput').value||'').trim().toLowerCase();
-  S.selDocType = null;
-  document.getElementById('docTypeHint').textContent = '';
-
-  if (!q) {
-    hideDrop('docTypeDrop');
-    document.getElementById('docTypeInput').className = 'form-input mono optional-empty';
-    updatePreview();
-    return;
-  }
-
-  const items = S.classifier.filter(r =>
-    (String(r.code||'').toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q))
-  ).slice(0, 30);
-
-  renderAcDocType('docTypeDrop', items, i => pickDocType(items[i]));
-  updatePreview();
-}
-
-function onDocTypeKey(e) {
-  acKey(e, 'docTypeDrop', S, 'docTypeAcIdx', () => {
-    const items = getVisibleAcItems('docTypeDrop');
-    if (S.docTypeAcIdx >= 0 && items[S.docTypeAcIdx]) pickDocType(items[S.docTypeAcIdx]._rec);
-  });
-}
-
-function pickDocType(r) {
-  S.selDocType = r;
-  document.getElementById('docTypeInput').value = `${r.code} — ${r.name||''}`;
-  document.getElementById('docTypeInput').className = 'form-input mono';
-  document.getElementById('docTypeHint').textContent = `Код: ${r.code}`;
-  hideDrop('docTypeDrop');
-  updatePreview();
 }
 
 /* ── primary use autocomplete ── */
@@ -541,62 +496,55 @@ function pickUse(r) {
 function updatePreview() {
   const country = countryVal();
   const org = orgVal();
-  const serial = serialVal();
   const nameVal = (document.getElementById('nameInput').value||'').trim();
+  const docTypeCode = (document.getElementById('docTypeSelect').value||'').trim();
 
-  const previewEl = document.getElementById('previewNumber');
-  const btnAdd = document.getElementById('btnAdd');
-  const serialHint = document.getElementById('serialHint');
+  const serialEl = document.getElementById('serialDisplay');
   const editionEl = document.getElementById('editionDisplay');
   const docNumEl = document.getElementById('docNumDisplay');
   const partNumEl = document.getElementById('partNumDisplay');
+  const previewEl = document.getElementById('previewVal');
+  const previewBox = document.getElementById('previewBox');
+  const btnAdd = document.getElementById('btnAdd');
 
-  if (!country || !org || !serial) {
-    previewEl.textContent = '—';
-    previewEl.className = 'preview-number empty';
+  if (!country || !org) {
+    serialEl.value = '';
     editionEl.value = '';
     docNumEl.value = '';
     partNumEl.value = '';
+    previewEl.textContent = '—';
+    previewBox.className = 'preview-box';
     btnAdd.disabled = true;
-    serialHint.textContent = '';
     return;
   }
 
-  const edition = computeEdition(country, org, serial);
+  const serial = nextFreeSerial(country, org) || '—';
+  const edition = serial !== '—' ? computeEdition(country, org, serial) : '—';
+  serialEl.value = serial;
   editionEl.value = edition;
 
-  // Check if serial already exists (new edition case)
-  const existingCount = S.components.filter(c =>
-    (c.country_prefix||'') === country &&
-    (c.org_prefix||'') === org &&
-    String(c.serial||'').padStart(5,'0') === serial
-  ).length;
-  serialHint.textContent = existingCount
-    ? `Существует ${existingCount} зап., будет издание ${edition}`
-    : 'Новый рег. номер, издание 01';
+  const docNum = docTypeCode ? (computeDocNum(country, org, serial, edition, docTypeCode) || '') : '';
+  const partNum = (docTypeCode && docNum) ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
+  docNumEl.value = docNum;
+  partNumEl.value = partNum;
 
-  // Optional doc fields
-  const docTypeCode = S.selDocType ? S.selDocType.code : '';
-  const docNum = computeDocNum(country, org, serial, edition, docTypeCode);
-  const partNum = docNum ? computePartNum(country, org, serial, edition, docTypeCode, docNum) : null;
+  const formed = buildNumber(country, org, serial, edition,
+    docTypeCode || null,
+    docTypeCode && docNum ? docNum : null,
+    docTypeCode && docNum && partNum ? partNum : null);
 
-  docNumEl.value = docTypeCode && docNum ? docNum : '';
-  partNumEl.value = docTypeCode && docNum && partNum ? partNum : '';
-
-  const formed = buildNumber(country, org, serial, edition, docTypeCode,
-    docTypeCode ? docNum : null,
-    docTypeCode && docNum ? partNum : null);
-
-  if (formed) {
+  if (formed && serial !== '—') {
     previewEl.textContent = formed;
-    previewEl.className = 'preview-number';
+    previewBox.className = 'preview-box next';
     btnAdd.disabled = !nameVal;
   } else {
     previewEl.textContent = '—';
-    previewEl.className = 'preview-number empty';
+    previewBox.className = 'preview-box';
     btnAdd.disabled = true;
   }
 }
+
+document.getElementById('nameInput').addEventListener('input', updatePreview);
 
 /* ═══════════════════════════════════
    ADD COMPONENT
@@ -604,19 +552,20 @@ function updatePreview() {
 async function addComponent() {
   const country = countryVal();
   const org = orgVal();
-  const serial = serialVal();
   const name = (document.getElementById('nameInput').value||'').trim();
-  if (!country || !org || !serial || !name) return;
+  if (!country || !org || !name) return;
 
+  const serial = nextFreeSerial(country, org);
+  if (!serial) return;
   const edition = computeEdition(country, org, serial);
-  const docTypeCode = S.selDocType ? S.selDocType.code : '';
-  const docNum = computeDocNum(country, org, serial, edition, docTypeCode);
-  const partNum = docNum ? computePartNum(country, org, serial, edition, docTypeCode, docNum) : null;
+  const docTypeCode = (document.getElementById('docTypeSelect').value||'').trim();
+  const docNum = docTypeCode ? (computeDocNum(country, org, serial, edition, docTypeCode) || '') : '';
+  const partNum = (docTypeCode && docNum) ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
 
   const espd_number = buildNumber(country, org, serial, edition,
-    docTypeCode,
-    docTypeCode ? docNum : null,
-    docTypeCode && docNum ? partNum : null);
+    docTypeCode || null,
+    docTypeCode && docNum ? docNum : null,
+    docTypeCode && docNum && partNum ? partNum : null);
   if (!espd_number) return;
 
   const btn = document.getElementById('btnAdd');
@@ -626,22 +575,20 @@ async function addComponent() {
   const fields = {
     country_prefix: country,
     org_prefix: org,
-    serial: serial,
-    edition: edition,
-    espd_number: espd_number,
-    name: name,
+    serial,
+    edition,
+    espd_number,
+    name,
   };
   if (docTypeCode) fields.doc_type_code = docTypeCode;
   if (docTypeCode && docNum) fields.doc_num = docNum;
   if (docTypeCode && docNum && partNum) fields.part_num = partNum;
   if (S.selUse) fields.primary_use = S.selUse.id;
 
-  // Optimistic add
   const tempId = -Date.now();
-  const optimistic = { id: tempId, espd_number, name, country_prefix: country, org_prefix: org,
-    serial, edition, doc_type_code: docTypeCode, doc_num: docNum||'', part_num: partNum||'',
-    primary_use: S.selUse ? S.selUse.id : 0 };
-  S.components.push(optimistic);
+  S.components.push({ id: tempId, espd_number, name, country_prefix: country, org_prefix: org,
+    serial, edition, doc_type_code: docTypeCode, doc_num: docNum, part_num: partNum,
+    primary_use: S.selUse ? S.selUse.id : 0 });
   renderRegistered();
 
   try {
@@ -650,16 +597,12 @@ async function addComponent() {
       loadComponents();
     }
 
-    // Reset form
     document.getElementById('nameInput').value = '';
     document.getElementById('useInput').value = '';
     document.getElementById('useHint').textContent = 'Не выбрано';
-    document.getElementById('docTypeInput').value = '';
-    document.getElementById('docTypeInput').className = 'form-input mono optional-empty';
-    document.getElementById('docTypeHint').textContent = '';
+    document.getElementById('docTypeSelect').value = '';
     S.selUse = null;
-    S.selDocType = null;
-    onCountryOrOrgChange();
+    updatePreview();
 
     btn.textContent = '✓ Зарегистрировано';
     btn.style.background = 'var(--grn)';
@@ -686,9 +629,7 @@ function renderRegistered() {
   const countEl = document.getElementById('regCount');
   const filterQ = (document.getElementById('regFilterInput')?.value||'').trim().toLowerCase();
 
-  let items = [...S.components].sort((a,b) =>
-    (a.espd_number||'').localeCompare(b.espd_number||'')
-  );
+  let items = [...S.components].sort((a,b) => (a.espd_number||'').localeCompare(b.espd_number||''));
   if (filterQ) {
     items = items.filter(c =>
       (c.espd_number||'').toLowerCase().includes(filterQ) ||
@@ -708,11 +649,8 @@ function renderRegistered() {
 
   body.innerHTML = `<table class="reg-table">
     <colgroup>
-      <col style="width:22%">
-      <col style="width:30%">
-      <col style="width:16%">
-      <col style="width:25%">
-      <col style="width:7%">
+      <col style="width:22%"><col style="width:30%">
+      <col style="width:16%"><col style="width:25%"><col style="width:7%">
     </colgroup>
     <thead>
       <tr>
@@ -732,7 +670,6 @@ function renderRegistered() {
     </tbody>
   </table>`;
 
-  // Focus active input
   if (S.editing) {
     const id = S.editing.rowId;
     const inputId = S.editing.mode === 'compName' ? `editCompNameInput-${id}` : `editDNInput-${id}`;
@@ -846,15 +783,12 @@ function onEditDNInput(rowId) {
   const q = input.value.trim().toLowerCase();
   S.editing.selUse = null;
   document.getElementById(`editSaveBtn-${rowId}`).disabled = true;
-
   const drop = document.getElementById(`editDNDrop-${rowId}`);
   const upCls = drop.dataset.up ? ' up' : '';
   if (!q) { drop.className = 'cell-edit-drop' + upCls; return; }
-
   const items = S.masterComponents.filter(r =>
     (r.decimal_number||'').toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q)
   ).slice(0, 20);
-
   if (!items.length) { drop.className = 'cell-edit-drop' + upCls; return; }
   drop.innerHTML = items.map((r,i) => `
     <div class="ac-item" data-idx="${i}" style="text-align:left">
@@ -874,8 +808,8 @@ function pickEditDN(rowId, rec) {
   document.getElementById(`editDNInput-${rowId}`).value = `${rec.decimal_number} — ${rec.name}`;
   document.getElementById(`editDNDrop-${rowId}`).className = 'cell-edit-drop';
   document.getElementById(`editSaveBtn-${rowId}`).disabled = false;
-  const preview = document.getElementById(`editDNNamePreview-${rowId}`);
-  if (preview) preview.textContent = rec.name || '—';
+  const p = document.getElementById(`editDNNamePreview-${rowId}`);
+  if (p) p.textContent = rec.name || '—';
 }
 
 function onEditKey(e, rowId) {
@@ -934,22 +868,6 @@ async function saveEditUseName(rowId) {
 /* ═══════════════════════════════════
    AUTOCOMPLETE HELPERS
 ═══════════════════════════════════ */
-function renderAcDocType(dropId, items, onPick) {
-  const drop = document.getElementById(dropId);
-  if (!items.length) { hideDrop(dropId); return; }
-  drop.innerHTML = items.map((r,i) => `
-    <div class="ac-item" data-idx="${i}">
-      <span class="ac-code">${esc(String(r.code||''))}</span>
-      <span class="ac-name">${esc(r.name||'')}</span>
-    </div>`).join('');
-  drop.querySelectorAll('.ac-item').forEach((el,i) => {
-    el._rec = items[i];
-    el.addEventListener('mousedown', e => e.preventDefault());
-    el.addEventListener('click', () => onPick(i));
-  });
-  drop.className = 'ac-drop on';
-}
-
 function renderAcComponents(dropId, items, onPick) {
   const drop = document.getElementById(dropId);
   if (!items.length) { hideDrop(dropId); return; }
@@ -983,7 +901,7 @@ function highlightAc(dropId, idx) {
 }
 
 document.addEventListener('click', e => {
-  if (!e.target.closest('.ac-wrap')) { hideDrop('docTypeDrop'); hideDrop('useDrop'); }
+  if (!e.target.closest('.ac-wrap')) hideDrop('useDrop');
 });
 
 /* ═══════════════════════════════════
@@ -1019,13 +937,8 @@ function hideTooltip() { document.getElementById('gTooltip').style.display = 'no
 /* ═══════════════════════════════════
    BOOT
 ═══════════════════════════════════ */
-// Init auto-fill on page load
-window.addEventListener('load', () => {
-  onCountryOrOrgChange();
-  updatePreview();
-});
-
 initGrist();
+updatePreview();
 </script>
 </body>
 </html>
