@@ -51,6 +51,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .form-input.mono{font-family:var(--mono)}
 .form-select{height:32px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;width:100%;cursor:pointer;transition:border-color .15s}
 .form-select:focus{border-color:var(--acc)}
+/* Formed number — input styled like original (green, mono, readonly) */
+.formed-num{font-family:var(--mono);background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn);font-weight:500;cursor:default}
+.formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
 
 /* autocomplete (for primary use only) */
 .ac-wrap{position:relative}
@@ -61,15 +64,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .ac-code{font-family:var(--mono);font-size:10px;color:var(--acc);flex-shrink:0}
 .ac-name{font-size:11px;color:var(--tx);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* preview */
-.preview-row{display:flex;align-items:stretch;gap:10px;margin-bottom:10px}
-.preview-box{flex:1;background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:4px}
-.preview-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)}
-.preview-val{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--tx)}
-.preview-val.ready{color:var(--acc)}
-.preview-box.next{background:var(--grn-bg);border-color:var(--grn-brd)}
-.preview-box.next .preview-lbl{color:var(--grn)}
-.preview-box.next .preview-val{color:var(--grn)}
 
 /* register button */
 .btn-add{display:flex;align-items:center;justify-content:center;gap:6px;background:#16b378;color:#fff;border:none;border-radius:var(--r);padding:9px 16px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s;width:100%}
@@ -200,20 +194,18 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
       </div>
 
-      <!-- Preview formed number -->
-      <div class="preview-row">
-        <div class="preview-box next" id="previewBox">
-          <span class="preview-lbl">Формируемый номер</span>
-          <span class="preview-val" id="previewVal">—</span>
+      <!-- Formed number + Name в одну строку (как в оригинале) -->
+      <div class="form-row" style="grid-template-columns:1fr 1.4fr;margin-bottom:10px">
+        <div class="form-group">
+          <label class="form-label">Формируемый номер</label>
+          <input class="form-input formed-num" id="formedNum" readonly value="—————.—">
         </div>
-      </div>
-
-      <!-- Name -->
-      <div class="form-group" style="margin-bottom:10px">
-        <label class="form-label">Наименование документа <span style="color:var(--red)">*</span></label>
-        <input class="form-input" id="nameInput"
-               placeholder="Программа технологическая для испытаний в камере тепла и холода"
-               oninput="updatePreview()">
+        <div class="form-group">
+          <label class="form-label">Наименование документа <span style="color:var(--red)">*</span></label>
+          <input class="form-input" id="nameInput"
+                 placeholder="Программа технологическая для испытаний в камере тепла и холода"
+                 oninput="updatePreview()">
+        </div>
       </div>
 
       <!-- Primary use -->
@@ -298,7 +290,7 @@ function initGrist() {
 async function loadComponents() {
   if (typeof grist === 'undefined') return;
   try {
-    const rows = await grist.docApi.fetchTable('espd_components');
+    const rows = await grist.docApi.fetchTable('ESPD_components');
     S.components = rowsToRecords(rows);
     refreshOrgList();
     firstLoadDone = true;
@@ -307,14 +299,14 @@ async function loadComponents() {
     renderRegistered();
   } catch(e) {
     console.error('Ошибка загрузки espd_components:', e);
-    setConn(false, 'Таблица espd_components не найдена');
+    setConn(false, 'Таблица ESPD_components не найдена');
   }
 }
 
 async function loadClassifier() {
   if (typeof grist === 'undefined') return;
   try {
-    const rows = await grist.docApi.fetchTable('espd_classifier');
+    const rows = await grist.docApi.fetchTable('ESPD_Classifier');
     S.classifier = rowsToRecords(rows);
     S.classifier.sort((a,b) => String(a.code||'').localeCompare(String(b.code||''), undefined, {numeric:true}));
     console.log(`[espd_classifier] ${S.classifier.length} записей`);
@@ -503,8 +495,7 @@ function updatePreview() {
   const editionEl = document.getElementById('editionDisplay');
   const docNumEl = document.getElementById('docNumDisplay');
   const partNumEl = document.getElementById('partNumDisplay');
-  const previewEl = document.getElementById('previewVal');
-  const previewBox = document.getElementById('previewBox');
+  const formedEl = document.getElementById('formedNum');
   const btnAdd = document.getElementById('btnAdd');
 
   if (!country || !org) {
@@ -512,8 +503,7 @@ function updatePreview() {
     editionEl.value = '';
     docNumEl.value = '';
     partNumEl.value = '';
-    previewEl.textContent = '—';
-    previewBox.className = 'preview-box';
+    formedEl.value = '—————.—';
     btnAdd.disabled = true;
     return;
   }
@@ -534,12 +524,10 @@ function updatePreview() {
     docTypeCode && docNum && partNum ? partNum : null);
 
   if (formed && serial !== '—') {
-    previewEl.textContent = formed;
-    previewBox.className = 'preview-box next';
+    formedEl.value = formed;
     btnAdd.disabled = !nameVal;
   } else {
-    previewEl.textContent = '—';
-    previewBox.className = 'preview-box';
+    formedEl.value = '—————.—';
     btnAdd.disabled = true;
   }
 }
