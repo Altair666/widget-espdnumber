@@ -2,7 +2,7 @@
   "name": "@altair666/widget-espdnumber",
   "description": "БД номеров по классификатору ЕСПД",
   "homePage": "https://github.com/Altair666/widget-espdnumber",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "grist": {
     "name": "ESPD Number",
     "url": "https://altair666.github.io/widget-espdnumber/index.html",

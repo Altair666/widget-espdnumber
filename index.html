@@ -249,16 +249,36 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.2.1</footer>
+<footer class="ver-footer">v0.2.2</footer>
 <div id="gTooltip"></div>
 
 <script>
+/* ═══════════════════════════════════
+   ГОСТ 19.101-77 — коды видов документов ЕСПД
+═══════════════════════════════════ */
+const ESPD_DOC_TYPES = [
+  {code:"05", name:"Ведомость держателей подлинников"},
+  {code:"12", name:"Текст программы"},
+  {code:"13", name:"Описание программы"},
+  {code:"20", name:"Ведомость эксплуатационных документов"},
+  {code:"30", name:"Формуляр"},
+  {code:"31", name:"Описание применения"},
+  {code:"32", name:"Руководство системного программиста"},
+  {code:"33", name:"Руководство программиста"},
+  {code:"34", name:"Руководство оператора"},
+  {code:"35", name:"Описание языка"},
+  {code:"46", name:"Руководство по техническому обслуживанию"},
+  {code:"51", name:"Программа и методика испытаний"},
+  {code:"81", name:"Пояснительная записка"},
+  {code:"90", name:"Прочие документы"},
+];
+
 /* ═══════════════════════════════════
    STATE
 ═══════════════════════════════════ */
 const S = {
   components: [],       // espd_components
-  classifier: [],       // espd_classifier (коды видов документов)
+  classifier: [...ESPD_DOC_TYPES], // коды видов документов (предзаполнено из ГОСТ)
   masterComponents: [], // Components (первичное применение)
   selUse: null,
   useAcIdx: -1,
@@ -304,16 +324,25 @@ async function loadComponents() {
 }
 
 async function loadClassifier() {
+  // Hardcoded ГОСТ-коды — основной источник (всегда доступны)
+  S.classifier = [...ESPD_DOC_TYPES];
+  renderDocTypeSelect();
   if (typeof grist === 'undefined') return;
   try {
     const rows = await grist.docApi.fetchTable('ESPD_Classifier');
-    S.classifier = rowsToRecords(rows);
-    S.classifier.sort((a,b) => String(a.code||'').localeCompare(String(b.code||''), undefined, {numeric:true}));
-    console.log(`[espd_classifier] ${S.classifier.length} записей`);
+    const fromGrist = rowsToRecords(rows).filter(r => r.code && r.name &&
+      !String(r.name).includes('�') && /^[\x00-\x7FЀ-ӿ]/.test(String(r.name)));
+    if (fromGrist.length) {
+      const known = new Map(S.classifier.map(r => [r.code, r]));
+      fromGrist.forEach(r => known.set(String(r.code), {code: String(r.code), name: String(r.name)}));
+      S.classifier = Array.from(known.values());
+      S.classifier.sort((a,b) => String(a.code||'').localeCompare(String(b.code||''), undefined, {numeric:true}));
+      console.log(`[espd_classifier] ${S.classifier.length} записей (${fromGrist.length} из Grist)`);
+      renderDocTypeSelect();
+    }
   } catch(e) {
-    console.warn('espd_classifier не найдена:', e.message);
+    console.warn('ESPD_Classifier недоступна, используются встроенные коды:', e.message);
   }
-  renderDocTypeSelect();
 }
 
 async function loadMasterComponents() {
@@ -925,6 +954,7 @@ function hideTooltip() { document.getElementById('gTooltip').style.display = 'no
 /* ═══════════════════════════════════
    BOOT
 ═══════════════════════════════════ */
+renderDocTypeSelect(); // сразу из ESPD_DOC_TYPES, до Grist
 initGrist();
 updatePreview();
 </script>
