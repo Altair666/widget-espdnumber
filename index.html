@@ -54,6 +54,19 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 /* Formed number — input styled like original (green, mono, readonly) */
 .form-input.formed-num{font-family:var(--mono);background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn);font-weight:500;cursor:default}
 .form-input.formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
+/* Serial lock */
+.form-input.serial-locked{border-color:var(--acc);background:var(--acc-bg);color:var(--acc);font-weight:600;cursor:default}
+.form-input.serial-locked:focus{border-color:var(--acc);background:var(--acc-bg)}
+.lock-bar{display:none;align-items:center;gap:8px;font-size:10px;font-weight:600;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding:5px 8px;background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r)}
+.lock-bar.on{display:flex}
+.lock-bar-clear{margin-left:auto;border:none;background:none;color:var(--acc);cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.7}
+.lock-bar-clear:hover{opacity:1}
+/* Checkbox column */
+.reg-cb{width:32px;padding:4px 0;text-align:center;vertical-align:middle;cursor:pointer;border-right:1px solid var(--brd)}
+.cb-box{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1.5px solid var(--brd2);border-radius:3pt;background:var(--surf3);cursor:pointer;transition:all .12s;color:transparent;flex-shrink:0}
+.cb-box:hover{border-color:var(--acc-brd);background:var(--acc-bg)}
+.cb-box.on{border-color:var(--acc);background:var(--acc);color:#fff}
+.reg-table tr.row-sel td{background:var(--acc-bg)}
 
 /* autocomplete (for primary use only) */
 .ac-wrap{position:relative}
@@ -133,6 +146,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     </div>
     <div class="pb">
 
+      <!-- Индикатор блокировки серийного номера -->
+      <div class="lock-bar" id="lockBar">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span id="lockBarLabel">Рег. номер зафиксирован</span>
+        <button class="lock-bar-clear" onclick="clearLock()" title="Снять блокировку">✕</button>
+      </div>
+
       <!-- Все 7 полей в одну строку -->
       <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 1fr 72px 64px">
 
@@ -175,7 +195,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <!-- 5. Вид документа (из espd_classifier) -->
         <div class="form-group">
           <label class="form-label">Вид документа</label>
-          <select class="form-select" id="docTypeSelect" onchange="updatePreview()">
+          <select class="form-select" id="docTypeSelect" onchange="onDocTypeChange()">
             <option value="">— не указан —</option>
           </select>
         </div>
@@ -183,7 +203,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <!-- 6. Номер документа (счётчик) -->
         <div class="form-group">
           <label class="form-label">№ докум.</label>
-          <input class="form-input mono" id="docNumDisplay" readonly placeholder="—">
+          <input class="form-input mono" id="docNumDisplay" readonly placeholder="—" oninput="onDocNumInput()">
         </div>
 
         <!-- 7. Номер части (счётчик) -->
@@ -249,7 +269,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.2.3</footer>
+<footer class="ver-footer">v0.2.4</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -283,7 +303,10 @@ const S = {
   selUse: null,
   useAcIdx: -1,
   editing: null,
+  lockedSerial: null,   // { rowId, country, org, serial } — зафиксированный серийный номер
 };
+
+let docNumManual = false; // true когда пользователь вручную ввёл номер документа
 
 /* ═══════════════════════════════════
    GRIST
@@ -474,7 +497,15 @@ function buildNumber(country, org, serial, edition, docTypeCode, docNum, partNum
 function countryVal() { return (document.getElementById('countryInput').value||'').trim().toUpperCase(); }
 function orgVal() { return (document.getElementById('orgInput').value||'').trim().replace(/\.+$/,''); }
 
-function onPrefixChange() { updatePreview(); }
+function onPrefixChange() {
+  const country = countryVal(), org = orgVal();
+  if (S.lockedSerial && (S.lockedSerial.country !== country || S.lockedSerial.org !== org)) {
+    S.lockedSerial = null;
+    docNumManual = false;
+    renderRegistered();
+  }
+  updatePreview();
+}
 
 function refreshOrgList() {
   const used = new Set(['ЛМАП','ТСЕМ','ЭЛМАП']);
@@ -520,31 +551,62 @@ function updatePreview() {
   const nameVal = (document.getElementById('nameInput').value||'').trim();
   const docTypeCode = (document.getElementById('docTypeSelect').value||'').trim();
 
-  const serialEl = document.getElementById('serialDisplay');
+  const serialEl  = document.getElementById('serialDisplay');
   const editionEl = document.getElementById('editionDisplay');
-  const docNumEl = document.getElementById('docNumDisplay');
+  const docNumEl  = document.getElementById('docNumDisplay');
   const partNumEl = document.getElementById('partNumDisplay');
-  const formedEl = document.getElementById('formedNum');
-  const btnAdd = document.getElementById('btnAdd');
+  const formedEl  = document.getElementById('formedNum');
+  const btnAdd    = document.getElementById('btnAdd');
+  const lockBar   = document.getElementById('lockBar');
 
   if (!country || !org) {
-    serialEl.value = '';
-    editionEl.value = '';
-    docNumEl.value = '';
-    partNumEl.value = '';
-    formedEl.value = '—————.—';
+    serialEl.value = ''; editionEl.value = ''; docNumEl.value = '';
+    partNumEl.value = ''; formedEl.value = '—————.—';
     btnAdd.disabled = true;
+    serialEl.classList.remove('serial-locked');
+    docNumEl.setAttribute('readonly','');
+    if (lockBar) lockBar.className = 'lock-bar';
     return;
   }
 
-  const serial = nextFreeSerial(country, org) || '—';
-  const edition = serial !== '—' ? computeEdition(country, org, serial) : '—';
-  serialEl.value = serial;
+  let serial, edition;
+  const lk = S.lockedSerial;
+  if (lk && lk.country === country && lk.org === org) {
+    serial  = lk.serial;
+    edition = computeEdition(country, org, serial);
+    serialEl.classList.add('serial-locked');
+    if (lockBar) {
+      lockBar.className = 'lock-bar on';
+      document.getElementById('lockBarLabel').textContent =
+        `Рег. номер ${serial} — следующее издание: ${edition}`;
+    }
+  } else {
+    if (S.lockedSerial) { S.lockedSerial = null; docNumManual = false; renderRegistered(); }
+    serial  = nextFreeSerial(country, org) || '—';
+    edition = serial !== '—' ? computeEdition(country, org, serial) : '—';
+    serialEl.classList.remove('serial-locked');
+    if (lockBar) lockBar.className = 'lock-bar';
+  }
+  serialEl.value  = serial;
   editionEl.value = edition;
 
-  const docNum = docTypeCode ? (computeDocNum(country, org, serial, edition, docTypeCode) || '') : '';
-  const partNum = (docTypeCode && docNum) ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
-  docNumEl.value = docNum;
+  // docNum — редактируемое когда выбран вид документа
+  if (docTypeCode && serial !== '—') {
+    docNumEl.removeAttribute('readonly');
+    docNumEl.placeholder = '01–99';
+    if (!docNumManual) {
+      docNumEl.value = computeDocNum(country, org, serial, edition, docTypeCode) || '';
+    }
+  } else {
+    docNumEl.setAttribute('readonly','');
+    docNumEl.placeholder = '—';
+    docNumEl.value = '';
+    docNumManual = false;
+  }
+
+  const docNum  = docNumEl.value.trim();
+  const partNum = (docTypeCode && docNum)
+    ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
   partNumEl.value = partNum;
 
   const formed = buildNumber(country, org, serial, edition,
@@ -553,15 +615,60 @@ function updatePreview() {
     docTypeCode && docNum && partNum ? partNum : null);
 
   if (formed && serial !== '—') {
-    formedEl.value = formed;
+    formedEl.value  = formed;
     btnAdd.disabled = !nameVal;
   } else {
-    formedEl.value = '—————.—';
+    formedEl.value  = '—————.—';
     btnAdd.disabled = true;
   }
 }
 
 document.getElementById('nameInput').addEventListener('input', updatePreview);
+
+/* ═══════════════════════════════════
+   LOCK ROW (чекбокс — фиксация серийного номера)
+═══════════════════════════════════ */
+function toggleRowLock(rowId) {
+  const c = S.components.find(x => x.id === rowId);
+  if (!c) return;
+  if (S.editing) { cancelEdit(); }
+  if (S.lockedSerial && S.lockedSerial.rowId === rowId) {
+    S.lockedSerial = null;
+  } else {
+    const country = c.country_prefix || '';
+    const org = c.org_prefix || '';
+    const serial = String(c.serial || '').padStart(5,'0');
+    S.lockedSerial = { rowId, country, org, serial };
+    document.getElementById('countryInput').value = country;
+    document.getElementById('orgInput').value = org;
+    // Автозаполнение наименования из первой записи с этим серийным номером
+    const first = S.components
+      .filter(x => (x.country_prefix||'') === country && (x.org_prefix||'') === org
+                && String(x.serial||'').padStart(5,'0') === serial)
+      .sort((a,b) => (parseInt(a.edition)||0) - (parseInt(b.edition)||0))[0];
+    if (first && first.name) document.getElementById('nameInput').value = first.name;
+  }
+  docNumManual = false;
+  renderRegistered();
+  updatePreview();
+}
+
+function clearLock() {
+  S.lockedSerial = null;
+  docNumManual = false;
+  renderRegistered();
+  updatePreview();
+}
+
+function onDocTypeChange() {
+  docNumManual = false;
+  updatePreview();
+}
+
+function onDocNumInput() {
+  docNumManual = true;
+  updatePreview();
+}
 
 /* ═══════════════════════════════════
    ADD COMPONENT
@@ -572,12 +679,29 @@ async function addComponent() {
   const name = (document.getElementById('nameInput').value||'').trim();
   if (!country || !org || !name) return;
 
-  const serial = nextFreeSerial(country, org);
-  if (!serial) return;
+  let serial;
+  const lk = S.lockedSerial;
+  if (lk && lk.country === country && lk.org === org) {
+    serial = lk.serial;
+  } else {
+    serial = nextFreeSerial(country, org);
+    if (!serial) return;
+  }
+
   const edition = computeEdition(country, org, serial);
   const docTypeCode = (document.getElementById('docTypeSelect').value||'').trim();
-  const docNum = docTypeCode ? (computeDocNum(country, org, serial, edition, docTypeCode) || '') : '';
-  const partNum = (docTypeCode && docNum) ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
+
+  let docNum = '';
+  if (docTypeCode) {
+    const raw = (document.getElementById('docNumDisplay').value||'').trim();
+    const n = parseInt(raw, 10);
+    if (raw && (isNaN(n) || n < 1 || n > 99)) {
+      alert('Номер документа должен быть от 01 до 99'); return;
+    }
+    docNum = raw ? String(n).padStart(2,'0') : '';
+  }
+  const partNum = (docTypeCode && docNum)
+    ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
 
   const espd_number = buildNumber(country, org, serial, edition,
     docTypeCode || null,
@@ -666,14 +790,15 @@ function renderRegistered() {
 
   body.innerHTML = `<table class="reg-table">
     <colgroup>
-      <col style="width:22%"><col style="width:30%">
-      <col style="width:16%"><col style="width:25%"><col style="width:7%">
+      <col style="width:3%"><col style="width:19%"><col style="width:28%">
+      <col style="width:15%"><col style="width:27%"><col style="width:8%">
     </colgroup>
     <thead>
       <tr>
+        <th rowspan="2" style="vertical-align:middle;text-align:center;padding:0;border-right:1px solid var(--brd)"></th>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Зарегистрированный компонент</th>
         <th colspan="2" class="group-header" style="border-right:1px solid var(--brd2)">Первичное применение</th>
-        <th rowspan="2" style="vertical-align:middle">Создан</th>
+        <th rowspan="2" style="vertical-align:middle;text-align:center">Создан</th>
       </tr>
       <tr class="sub-header">
         <th style="border-right:1px solid var(--brd)">Номер ЕСПД</th>
@@ -705,6 +830,7 @@ function renderRegRow(c, idx, total, byId) {
   const tip = esc([author||'Автор неизвестен', dateStr].filter(Boolean).join('\n'));
   const editing = S.editing && S.editing.rowId === c.id;
   const dropUp = idx >= total - 2;
+  const isLocked = S.lockedSerial && S.lockedSerial.rowId === c.id;
 
   let useDnCell, useNameCell, compNameCell;
 
@@ -775,7 +901,12 @@ function renderRegRow(c, idx, total, byId) {
     </div>`;
   }
 
-  return `<tr>
+  return `<tr class="${isLocked ? 'row-sel' : ''}">
+    <td class="reg-cb" onclick="toggleRowLock(${c.id})">
+      <div class="cb-box${isLocked?' on':''}">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </td>
     <td class="reg-dn" style="border-right:1px solid var(--brd)">${esc(c.espd_number||'—')}</td>
     <td class="editable-cell" style="border-right:1px solid var(--brd2);text-align:left">${compNameCell}</td>
     <td class="editable-cell" style="border-right:1px solid var(--brd)">${useDnCell}</td>
