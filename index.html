@@ -52,8 +52,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .form-select{height:32px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;width:100%;cursor:pointer;transition:border-color .15s}
 .form-select:focus{border-color:var(--acc)}
 /* Formed number — input styled like original (green, mono, readonly) */
-.formed-num{font-family:var(--mono);background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn);font-weight:500;cursor:default}
-.formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
+.form-input.formed-num{font-family:var(--mono);background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn);font-weight:500;cursor:default}
+.form-input.formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
 
 /* autocomplete (for primary use only) */
 .ac-wrap{position:relative}
@@ -249,7 +249,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.2.0</footer>
+<footer class="ver-footer">v0.2.1</footer>
 <div id="gTooltip"></div>
 
 <script>
