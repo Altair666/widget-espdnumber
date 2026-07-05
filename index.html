@@ -61,6 +61,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .lock-bar.on{display:flex}
 .lock-bar-clear{margin-left:auto;border:none;background:none;color:var(--acc);cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.7}
 .lock-bar-clear:hover{opacity:1}
+/* Edition lock button */
+.edition-lock-btn{display:flex;align-items:center;justify-content:center;height:32px;width:100%;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf3);color:var(--tx3);cursor:pointer;transition:all .15s;padding:0;flex-shrink:0}
+.edition-lock-btn:hover{border-color:var(--acc-brd);color:var(--acc);background:var(--acc-bg)}
+.edition-lock-btn.locked{border-color:var(--acc);background:var(--acc-bg);color:var(--acc)}
+/* Doc num dropdown */
+.doc-num-wrap{position:relative;width:100%}
+.doc-num-drop{position:absolute;top:34px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:200;max-height:150px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.doc-num-drop.on{display:block}
+.doc-num-item{padding:5px 9px;cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--tx);transition:background .1s}
+.doc-num-item:hover{background:var(--acc-bg);color:var(--acc)}
 /* Checkbox column */
 .reg-cb{width:32px;padding:4px 0;text-align:center;vertical-align:middle;cursor:pointer;border-right:1px solid var(--brd)}
 .cb-box{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1.5px solid var(--brd2);border-radius:3pt;background:var(--surf3);cursor:pointer;transition:all .12s;color:transparent;flex-shrink:0}
@@ -153,8 +163,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <button class="lock-bar-clear" onclick="clearLock()" title="Снять блокировку">✕</button>
       </div>
 
-      <!-- Все 7 полей в одну строку -->
-      <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 1fr 72px 64px">
+      <!-- Все 8 полей в одну строку (добавлена кнопка фиксации издания) -->
+      <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 28px 1fr 90px 64px">
 
         <!-- 1. Код страны -->
         <div class="form-group">
@@ -186,10 +196,23 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <input class="form-input mono" id="serialDisplay" readonly placeholder="00001">
         </div>
 
-        <!-- 4. Издание (счётчик) -->
+        <!-- 4. Издание (счётчик или ручной ввод) -->
         <div class="form-group">
           <label class="form-label">Издание</label>
-          <input class="form-input mono" id="editionDisplay" readonly placeholder="01">
+          <input class="form-input mono" id="editionDisplay" readonly placeholder="01"
+                 oninput="onEditionInput()">
+        </div>
+
+        <!-- 4б. Кнопка фиксации издания -->
+        <div class="form-group" style="justify-content:flex-end">
+          <label class="form-label" style="visibility:hidden">-</label>
+          <button class="edition-lock-btn" id="editionLockBtn" onclick="toggleEditionLock()"
+                  title="Зафиксировать издание">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </button>
         </div>
 
         <!-- 5. Вид документа (из espd_classifier) -->
@@ -200,10 +223,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           </select>
         </div>
 
-        <!-- 6. Номер документа (счётчик) -->
+        <!-- 6. Номер документа (с выпадающим 01-99) -->
         <div class="form-group">
           <label class="form-label">№ докум.</label>
-          <input class="form-input mono" id="docNumDisplay" readonly placeholder="—" oninput="onDocNumInput()">
+          <div class="doc-num-wrap">
+            <input class="form-input mono" id="docNumDisplay" readonly placeholder="—"
+                   oninput="onDocNumInput()" onfocus="onDocNumFocus()" onblur="onDocNumBlur()"
+                   autocomplete="off">
+            <div class="doc-num-drop" id="docNumDrop"></div>
+          </div>
         </div>
 
         <!-- 7. Номер части (счётчик) -->
@@ -269,7 +297,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.2.4</footer>
+<footer class="ver-footer">v0.3.0</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -304,6 +332,7 @@ const S = {
   useAcIdx: -1,
   editing: null,
   lockedSerial: null,   // { rowId, country, org, serial } — зафиксированный серийный номер
+  lockedEdition: null,  // string "01"/"02"/... или null — зафиксированное издание
 };
 
 let docNumManual = false; // true когда пользователь вручную ввёл номер документа
@@ -423,13 +452,16 @@ function nextFreeSerial(country, org) {
   return null;
 }
 
-function computeEdition(country, org, serial) {
+function computeEdition(country, org, serial, docTypeCode, docNum) {
   const editions = S.components
-    .filter(c =>
-      (c.country_prefix||'') === country &&
-      (c.org_prefix||'') === org &&
-      String(c.serial||'').padStart(5,'0') === serial
-    )
+    .filter(c => {
+      if ((c.country_prefix||'') !== country) return false;
+      if ((c.org_prefix||'') !== org) return false;
+      if (String(c.serial||'').padStart(5,'0') !== serial) return false;
+      if ((c.doc_type_code||'') !== (docTypeCode||'')) return false;
+      if (docTypeCode && (c.doc_num||'') !== (docNum||'')) return false;
+      return true;
+    })
     .map(c => parseInt(c.edition||'0', 10))
     .filter(n => !isNaN(n) && n > 0);
   return String((editions.length ? Math.max(...editions) : 0) + 1).padStart(2,'0');
@@ -501,6 +533,7 @@ function onPrefixChange() {
   const country = countryVal(), org = orgVal();
   if (S.lockedSerial && (S.lockedSerial.country !== country || S.lockedSerial.org !== org)) {
     S.lockedSerial = null;
+    S.lockedEdition = null;
     docNumManual = false;
     renderRegistered();
   }
@@ -573,29 +606,23 @@ function updatePreview() {
   const lk = S.lockedSerial;
   if (lk && lk.country === country && lk.org === org) {
     serial  = lk.serial;
-    edition = computeEdition(country, org, serial);
     serialEl.classList.add('serial-locked');
-    if (lockBar) {
-      lockBar.className = 'lock-bar on';
-      document.getElementById('lockBarLabel').textContent =
-        `Рег. номер ${serial} — следующее издание: ${edition}`;
-    }
   } else {
-    if (S.lockedSerial) { S.lockedSerial = null; docNumManual = false; renderRegistered(); }
+    if (S.lockedSerial) { S.lockedSerial = null; S.lockedEdition = null; docNumManual = false; renderRegistered(); }
     serial  = nextFreeSerial(country, org) || '—';
-    edition = serial !== '—' ? computeEdition(country, org, serial) : '—';
     serialEl.classList.remove('serial-locked');
     if (lockBar) lockBar.className = 'lock-bar';
   }
-  serialEl.value  = serial;
-  editionEl.value = edition;
+  serialEl.value = serial;
 
-  // docNum — редактируемое когда выбран вид документа
+  // docNum — редактируемое когда выбран вид документа (вычисляем до издания, т.к. издание зависит от docNum)
   if (docTypeCode && serial !== '—') {
     docNumEl.removeAttribute('readonly');
     docNumEl.placeholder = '01–99';
     if (!docNumManual) {
-      docNumEl.value = computeDocNum(country, org, serial, edition, docTypeCode) || '';
+      // При автозаполнении используем ed01 как базу (точное издание пересчитается ниже)
+      docNumEl.value = computeDocNum(country, org, serial,
+        S.lockedEdition || '01', docTypeCode) || '';
     }
   } else {
     docNumEl.setAttribute('readonly','');
@@ -603,8 +630,31 @@ function updatePreview() {
     docNumEl.value = '';
     docNumManual = false;
   }
+  const docNum = docNumEl.value.trim();
 
-  const docNum  = docNumEl.value.trim();
+  // Издание: зафиксированное или автовычисление с учётом exact-match (serial+docType+docNum)
+  const editionLockBtn = document.getElementById('editionLockBtn');
+  if (S.lockedEdition !== null) {
+    edition = S.lockedEdition;
+    editionEl.removeAttribute('readonly');
+    editionEl.classList.add('serial-locked');
+    if (editionLockBtn) editionLockBtn.classList.add('locked');
+  } else {
+    edition = serial !== '—' ? computeEdition(country, org, serial, docTypeCode, docNum) : '—';
+    editionEl.setAttribute('readonly','');
+    editionEl.classList.remove('serial-locked');
+    if (editionLockBtn) editionLockBtn.classList.remove('locked');
+  }
+  editionEl.value = edition;
+
+  if (lk && lk.country === country && lk.org === org) {
+    if (lockBar) {
+      lockBar.className = 'lock-bar on';
+      const edLabel = S.lockedEdition !== null ? `издание ${edition} зафиксировано` : `следующее издание: ${edition}`;
+      document.getElementById('lockBarLabel').textContent = `Рег. номер ${serial} — ${edLabel}`;
+    }
+  }
+
   const partNum = (docTypeCode && docNum)
     ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
   partNumEl.value = partNum;
@@ -655,6 +705,7 @@ function toggleRowLock(rowId) {
 
 function clearLock() {
   S.lockedSerial = null;
+  S.lockedEdition = null;
   docNumManual = false;
   renderRegistered();
   updatePreview();
@@ -665,9 +716,65 @@ function onDocTypeChange() {
   updatePreview();
 }
 
-function onDocNumInput() {
+/* ── Edition lock ── */
+function toggleEditionLock() {
+  if (S.lockedEdition !== null) {
+    S.lockedEdition = null;
+  } else {
+    const cur = (document.getElementById('editionDisplay').value||'').trim();
+    S.lockedEdition = (cur && cur !== '—') ? cur : '01';
+  }
+  updatePreview();
+}
+
+function onEditionInput() {
+  if (S.lockedEdition !== null) {
+    S.lockedEdition = (document.getElementById('editionDisplay').value||'').trim();
+    updatePreview();
+  }
+}
+
+/* ── Doc num dropdown (01-99) ── */
+function buildDocNumDrop() {
+  const input = document.getElementById('docNumDisplay');
+  const drop  = document.getElementById('docNumDrop');
+  if (!drop) return;
+  if (input.hasAttribute('readonly')) { drop.className = 'doc-num-drop'; return; }
+  const q = (input.value||'').trim();
+  const items = [];
+  for (let i = 1; i <= 99; i++) {
+    const s = String(i).padStart(2,'0');
+    if (!q || s.startsWith(q)) items.push(s);
+  }
+  if (!items.length) { drop.className = 'doc-num-drop'; return; }
+  drop.innerHTML = items.map(s =>
+    `<div class="doc-num-item" onmousedown="pickDocNum('${s}')">${s}</div>`
+  ).join('');
+  drop.className = 'doc-num-drop on';
+}
+
+function pickDocNum(val) {
+  document.getElementById('docNumDisplay').value = val;
+  document.getElementById('docNumDrop').className = 'doc-num-drop';
   docNumManual = true;
   updatePreview();
+}
+
+function onDocNumInput() {
+  docNumManual = true;
+  buildDocNumDrop();
+  updatePreview();
+}
+
+function onDocNumFocus() {
+  buildDocNumDrop();
+}
+
+function onDocNumBlur() {
+  setTimeout(() => {
+    const drop = document.getElementById('docNumDrop');
+    if (drop) drop.className = 'doc-num-drop';
+  }, 150);
 }
 
 /* ═══════════════════════════════════
