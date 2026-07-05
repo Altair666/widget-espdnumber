@@ -10,7 +10,7 @@
     "published": true,
     "accessLevel": "full",
     "renderAfterReady": true,
-    "description": "База номеров технологических процессов с классификатором ЕСПД",
+    "description": "База номеров программной документации с классификатором ЕСПД",
     "authors": [{"name": "Altair666","url": "https://github.com/Altair666"}],
     "isGristLabsMaintained": false
   }
