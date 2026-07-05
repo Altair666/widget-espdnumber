@@ -1,16 +1,16 @@
 {
-  "name": "@altair666/widget-estdnumber",
-  "description": "БД номеров по классификатору ЕСТД",
-  "homePage": "https://github.com/Altair666/widget-estdnumber",
-  "version": "0.11.0",
+  "name": "@altair666/widget-espdnumber",
+  "description": "БД номеров по классификатору ЕСПД",
+  "homePage": "https://github.com/Altair666/widget-espdnumber",
+  "version": "0.1.0",
   "grist": {
-    "name": "ESTD Number",
-    "url": "https://altair666.github.io/widget-estdnumber/index.html",
-    "widgetId": "@altair666/widget-estdnumber",
+    "name": "ESPD Number",
+    "url": "https://altair666.github.io/widget-espdnumber/index.html",
+    "widgetId": "@altair666/widget-espdnumber",
     "published": true,
     "accessLevel": "full",
     "renderAfterReady": true,
-    "description": "База номеров технологических процессов с классификатором ЕСТД",
+    "description": "База номеров технологических процессов с классификатором ЕСПД",
     "authors": [{"name": "Altair666","url": "https://github.com/Altair666"}],
     "isGristLabsMaintained": false
   }
