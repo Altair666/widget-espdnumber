@@ -163,8 +163,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <button class="lock-bar-clear" onclick="clearLock()" title="Снять блокировку">✕</button>
       </div>
 
-      <!-- Все 9 полей в одну строку (кнопка издания + кнопка счётчика части) -->
-      <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 28px 1fr 90px 28px 56px">
+      <!-- Все 8 полей в одну строку (кнопка издания + блок части) -->
+      <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 28px 1fr 90px 64px">
 
         <!-- 1. Код страны -->
         <div class="form-group">
@@ -234,25 +234,23 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           </div>
         </div>
 
-        <!-- 7б. Кнопка счётчика части -->
-        <div class="form-group" style="justify-content:flex-end">
-          <label class="form-label" style="visibility:hidden">-</label>
-          <button class="edition-lock-btn" id="partCounterBtn" onclick="togglePartCounter()"
-                  title="Включить счётчик номера части">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-              <line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
-              <line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- 7. Номер части -->
+        <!-- 7. Номер части: кнопка-счётчик + поле под общей меткой -->
         <div class="form-group">
           <label class="form-label">№ части</label>
-          <input class="form-input mono" id="partNumDisplay" readonly placeholder="—"
-                 oninput="updatePreview()">
+          <div style="display:flex;gap:4px">
+            <button class="edition-lock-btn" id="partCounterBtn" onclick="togglePartCounter()"
+                    title="Включить счётчик номера части" style="flex:0 0 28px;width:28px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+            </button>
+            <input class="form-input mono" id="partNumDisplay" readonly placeholder="—"
+                   oninput="updatePreview()"
+                   style="flex:0 0 28px;width:28px;padding:0 4px;text-align:center">
+          </div>
         </div>
 
       </div>
@@ -312,7 +310,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.6.0</footer>
+<footer class="ver-footer">v0.7.0</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -674,7 +672,7 @@ function updatePreview() {
   const partCounterBtn = document.getElementById('partCounterBtn');
   if (docTypeCode && docNum && S.partNumCounter) {
     partNumEl.removeAttribute('readonly');
-    partNumEl.placeholder = '1–9';
+    partNumEl.placeholder = '—';
     if (!partNumEl.value.trim()) {
       partNumEl.value = computePartNum(country, org, serial, edition, docTypeCode, docNum) || '';
     }
