@@ -248,7 +248,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
               </svg>
             </button>
             <input class="form-input mono" id="partNumDisplay" readonly placeholder="—"
-                   oninput="updatePreview()"
                    style="flex:0 0 28px;width:28px;padding:0 4px;text-align:center">
           </div>
         </div>
@@ -310,7 +309,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.7.0</footer>
+<footer class="ver-footer">v0.8.0</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -671,15 +670,10 @@ function updatePreview() {
 
   const partCounterBtn = document.getElementById('partCounterBtn');
   if (docTypeCode && docNum && S.partNumCounter) {
-    partNumEl.removeAttribute('readonly');
-    partNumEl.placeholder = '—';
-    if (!partNumEl.value.trim()) {
-      partNumEl.value = computePartNum(country, org, serial, edition, docTypeCode, docNum) || '';
-    }
+    partNumEl.value = computePartNum(country, org, serial, edition, docTypeCode, docNum) || '';
     if (partCounterBtn) partCounterBtn.classList.add('locked');
   } else {
-    partNumEl.setAttribute('readonly', '');
-    if (!S.partNumCounter) partNumEl.value = '';
+    partNumEl.value = '';
     if (partCounterBtn) partCounterBtn.classList.remove('locked');
   }
   const partNum = partNumEl.value.trim();
