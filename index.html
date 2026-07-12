@@ -237,7 +237,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <!-- 7. Номер части (счётчик) -->
         <div class="form-group">
           <label class="form-label">№ части</label>
-          <input class="form-input mono" id="partNumDisplay" readonly placeholder="—">
+          <input class="form-input mono" id="partNumDisplay" readonly placeholder="—"
+                 oninput="updatePreview()">
         </div>
 
       </div>
@@ -297,7 +298,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.4.0</footer>
+<footer class="ver-footer">v0.5.0</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -655,9 +656,14 @@ function updatePreview() {
     }
   }
 
-  const partNum = (docTypeCode && docNum)
-    ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
-  partNumEl.value = partNum;
+  if (docTypeCode && docNum) {
+    partNumEl.removeAttribute('readonly');
+    partNumEl.placeholder = '—';
+  } else {
+    partNumEl.setAttribute('readonly', '');
+    partNumEl.value = '';
+  }
+  const partNum = partNumEl.value.trim();
 
   const formed = buildNumber(country, org, serial, edition,
     docTypeCode || null,
@@ -713,6 +719,7 @@ function clearLock() {
 
 function onDocTypeChange() {
   docNumManual = false;
+  document.getElementById('partNumDisplay').value = '';
   updatePreview();
 }
 
@@ -756,6 +763,7 @@ function buildDocNumDrop() {
 function pickDocNum(val) {
   document.getElementById('docNumDisplay').value = val;
   document.getElementById('docNumDrop').className = 'doc-num-drop';
+  document.getElementById('partNumDisplay').value = '';
   docNumManual = true;
   updatePreview();
 }
@@ -795,7 +803,6 @@ async function addComponent() {
     if (!serial) return;
   }
 
-  const edition = computeEdition(country, org, serial);
   const docTypeCode = (document.getElementById('docTypeSelect').value||'').trim();
 
   let docNum = '';
@@ -807,8 +814,20 @@ async function addComponent() {
     }
     docNum = raw ? String(n).padStart(2,'0') : '';
   }
-  const partNum = (docTypeCode && docNum)
-    ? (computePartNum(country, org, serial, edition, docTypeCode, docNum) || '') : '';
+
+  let partNum = '';
+  if (docTypeCode && docNum) {
+    const rawP = (document.getElementById('partNumDisplay').value||'').trim();
+    const p = parseInt(rawP, 10);
+    if (rawP && (isNaN(p) || p < 1 || p > 9)) {
+      alert('Номер части должен быть от 1 до 9'); return;
+    }
+    partNum = rawP ? String(p) : '';
+  }
+
+  const edition = S.lockedEdition !== null
+    ? S.lockedEdition
+    : computeEdition(country, org, serial, docTypeCode, docNum);
 
   const espd_number = buildNumber(country, org, serial, edition,
     docTypeCode || null,
