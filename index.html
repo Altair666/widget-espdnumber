@@ -297,7 +297,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.3.0</footer>
+<footer class="ver-footer">v0.4.0</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -514,10 +514,10 @@ function buildNumber(country, org, serial, edition, docTypeCode, docNum, partNum
   if (!country || !org || !serial || !edition) return null;
   let n = `${country}.${org}.${serial}-${edition}`;
   if (docTypeCode) {
-    n += `-${docTypeCode}`;
+    n += ` ${docTypeCode}`;
     if (docNum) {
-      n += `-${docNum}`;
-      if (partNum) n += `-${partNum}`;
+      n += ` ${docNum}`;
+      if (partNum) n += ` ${partNum}`;
     }
   }
   return n;
