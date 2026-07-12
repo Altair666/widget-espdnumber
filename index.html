@@ -163,8 +163,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <button class="lock-bar-clear" onclick="clearLock()" title="Снять блокировку">✕</button>
       </div>
 
-      <!-- Все 8 полей в одну строку (добавлена кнопка фиксации издания) -->
-      <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 28px 1fr 90px 64px">
+      <!-- Все 9 полей в одну строку (кнопка издания + кнопка счётчика части) -->
+      <div class="form-row" style="grid-template-columns:72px 110px 90px 70px 28px 1fr 90px 28px 56px">
 
         <!-- 1. Код страны -->
         <div class="form-group">
@@ -234,7 +234,21 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           </div>
         </div>
 
-        <!-- 7. Номер части (счётчик) -->
+        <!-- 7б. Кнопка счётчика части -->
+        <div class="form-group" style="justify-content:flex-end">
+          <label class="form-label" style="visibility:hidden">-</label>
+          <button class="edition-lock-btn" id="partCounterBtn" onclick="togglePartCounter()"
+                  title="Включить счётчик номера части">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 7. Номер части -->
         <div class="form-group">
           <label class="form-label">№ части</label>
           <input class="form-input mono" id="partNumDisplay" readonly placeholder="—"
@@ -298,7 +312,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.0</footer>
+<footer class="ver-footer">v0.6.0</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -334,6 +348,7 @@ const S = {
   editing: null,
   lockedSerial: null,   // { rowId, country, org, serial } — зафиксированный серийный номер
   lockedEdition: null,  // string "01"/"02"/... или null — зафиксированное издание
+  partNumCounter: false, // true = счётчик части активен (авто + редактируемый)
 };
 
 let docNumManual = false; // true когда пользователь вручную ввёл номер документа
@@ -656,12 +671,18 @@ function updatePreview() {
     }
   }
 
-  if (docTypeCode && docNum) {
+  const partCounterBtn = document.getElementById('partCounterBtn');
+  if (docTypeCode && docNum && S.partNumCounter) {
     partNumEl.removeAttribute('readonly');
-    partNumEl.placeholder = '—';
+    partNumEl.placeholder = '1–9';
+    if (!partNumEl.value.trim()) {
+      partNumEl.value = computePartNum(country, org, serial, edition, docTypeCode, docNum) || '';
+    }
+    if (partCounterBtn) partCounterBtn.classList.add('locked');
   } else {
     partNumEl.setAttribute('readonly', '');
-    partNumEl.value = '';
+    if (!S.partNumCounter) partNumEl.value = '';
+    if (partCounterBtn) partCounterBtn.classList.remove('locked');
   }
   const partNum = partNumEl.value.trim();
 
@@ -714,6 +735,12 @@ function clearLock() {
   S.lockedEdition = null;
   docNumManual = false;
   renderRegistered();
+  updatePreview();
+}
+
+function togglePartCounter() {
+  S.partNumCounter = !S.partNumCounter;
+  document.getElementById('partNumDisplay').value = '';
   updatePreview();
 }
 
