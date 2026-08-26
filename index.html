@@ -38,7 +38,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .panel-form{flex:0 0 auto}
 /* Список зарегистрированных — занимает остаток высоты, скроллится сам */
 .panel-reg{flex:1;display:flex;flex-direction:column;min-height:0}
-#regBody{flex:1;overflow-y:auto;min-height:0}
+#regBody{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
 .reg-table thead{position:sticky;top:0;z-index:5}
 .ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
 .ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
@@ -101,7 +101,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-add:disabled{opacity:.35;cursor:not-allowed}
 
 /* ── REGISTERED TABLE ── */
-.reg-table{width:100%;border-collapse:collapse;font-size:12px}
+.reg-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}
 .reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2)}
 .reg-table th.group-header{border-bottom:2px solid var(--brd2);padding-bottom:2px;text-align:center}
 .reg-table .sub-header th{font-size:10px;color:var(--tx3);font-weight:500;padding:3px 8px;border-bottom:1px solid var(--brd);background:var(--surf2);text-align:center;white-space:nowrap}
@@ -109,7 +109,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-table tr:last-child td{border-bottom:none}
 .reg-table tr:hover td{background:var(--surf2)}
 .reg-table td.reg-dn{vertical-align:middle}
-.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap}
+.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .reg-name{font-size:12px;color:var(--tx)}
 .reg-use-dn{font-family:var(--mono);font-size:11px;color:var(--tx3)}
 .reg-use-name{font-size:12px;color:var(--tx2)}
@@ -315,7 +315,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.9.0</footer>
+<footer class="ver-footer">v0.9.1</footer>
 <div id="gTooltip"></div>
 
 <script>
