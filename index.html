@@ -29,11 +29,17 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .ver-footer{position:fixed;right:10px;bottom:6px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
 
 /* ── MAIN ── */
-.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:0;min-height:0}
 
 /* ── PANELS ── */
 .panel{background:var(--surf);border:1px solid var(--brd);border-radius:0;overflow:hidden}
 .panel+.panel{border-top:none}
+/* Форма регистрации — фиксированная высота, не скроллится вместе со списком */
+.panel-form{flex:0 0 auto}
+/* Список зарегистрированных — занимает остаток высоты, скроллится сам */
+.panel-reg{flex:1;display:flex;flex-direction:column;min-height:0}
+#regBody{flex:1;overflow-y:auto;min-height:0}
+.reg-table thead{position:sticky;top:0;z-index:5}
 .ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
 .ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
 .pb{padding:10px 12px}
@@ -150,7 +156,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 <main class="main" id="main">
 
   <!-- REGISTRATION FORM -->
-  <div class="panel">
+  <div class="panel panel-form">
     <div class="ph">
       <span class="ph-title">Регистрация номера ЕСПД</span>
     </div>
@@ -288,7 +294,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   </div>
 
   <!-- REGISTERED COMPONENTS -->
-  <div class="panel">
+  <div class="panel panel-reg">
     <div class="ph">
       <span class="ph-title">Зарегистрированные компоненты</span>
       <span class="tag tag-blue" id="regCount"></span>
@@ -309,7 +315,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.8.1</footer>
+<footer class="ver-footer">v0.9.0</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -349,6 +355,7 @@ const S = {
 };
 
 let docNumManual = false; // true когда пользователь вручную ввёл номер документа
+let lastAppendedDocTypeName = ''; // текст вида документа, добавленный в Наименование (для замены при смене вида)
 
 /* ═══════════════════════════════════
    GRIST
@@ -703,6 +710,7 @@ function toggleRowLock(rowId) {
   if (S.editing) { cancelEdit(); }
   if (S.lockedSerial && S.lockedSerial.rowId === rowId) {
     S.lockedSerial = null;
+    clearPrimaryUseSelection();
   } else {
     const country = c.country_prefix || '';
     const org = c.org_prefix || '';
@@ -716,16 +724,28 @@ function toggleRowLock(rowId) {
                 && String(x.serial||'').padStart(5,'0') === serial)
       .sort((a,b) => (parseInt(a.edition)||0) - (parseInt(b.edition)||0))[0];
     if (first && first.name) document.getElementById('nameInput').value = first.name;
+    // Подтягиваем первичное применение зафиксированного компонента, чтобы
+    // новый регистрируемый документ был привязан к тому же изделию
+    const master = c.primary_use ? S.masterComponents.find(m => m.id === c.primary_use) : null;
+    if (master) pickUse(master);
+    else clearPrimaryUseSelection();
   }
   docNumManual = false;
   renderRegistered();
   updatePreview();
 }
 
+function clearPrimaryUseSelection() {
+  S.selUse = null;
+  document.getElementById('useInput').value = '';
+  document.getElementById('useHint').textContent = 'Не выбрано';
+}
+
 function clearLock() {
   S.lockedSerial = null;
   S.lockedEdition = null;
   docNumManual = false;
+  clearPrimaryUseSelection();
   renderRegistered();
   updatePreview();
 }
@@ -739,7 +759,27 @@ function togglePartCounter() {
 function onDocTypeChange() {
   docNumManual = false;
   document.getElementById('partNumDisplay').value = '';
+  applyDocTypeNameToTitle();
   updatePreview();
+}
+
+// Добавляет наименование вида документа (текст из классификатора, не код) к
+// полю "Наименование документа". При смене вида документа заменяет только
+// ранее добавленный хвост, не трогая то, что ввёл пользователь сам.
+function applyDocTypeNameToTitle() {
+  const docTypeCode = (document.getElementById('docTypeSelect').value||'').trim();
+  const nameInput = document.getElementById('nameInput');
+  let cur = nameInput.value || '';
+  if (lastAppendedDocTypeName) {
+    if (cur === lastAppendedDocTypeName) cur = '';
+    else if (cur.endsWith(' ' + lastAppendedDocTypeName)) cur = cur.slice(0, cur.length - lastAppendedDocTypeName.length - 1);
+  }
+  cur = cur.trim();
+  const rec = S.classifier.find(r => String(r.code) === docTypeCode);
+  const typeName = rec ? (rec.name || '') : '';
+  cur = typeName ? (cur ? `${cur} ${typeName}` : typeName) : cur;
+  lastAppendedDocTypeName = typeName;
+  nameInput.value = cur;
 }
 
 /* ── Edition lock ── */
@@ -888,6 +928,7 @@ async function addComponent() {
     document.getElementById('useHint').textContent = 'Не выбрано';
     document.getElementById('docTypeSelect').value = '';
     S.selUse = null;
+    lastAppendedDocTypeName = '';
     updatePreview();
 
     btn.textContent = '✓ Зарегистрировано';
