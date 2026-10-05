@@ -315,7 +315,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.9.1</footer>
+<footer class="ver-footer">v0.9.2</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -460,16 +460,13 @@ function renderDocTypeSelect() {
    COUNTERS
 ═══════════════════════════════════ */
 function nextFreeSerial(country, org) {
-  const used = new Set(
-    S.components
-      .filter(c => (c.country_prefix||'') === country && (c.org_prefix||'') === org)
-      .map(c => String(c.serial||'').padStart(5,'0'))
-  );
-  for (let i = 1; i <= 99999; i++) {
-    const s = String(i).padStart(5,'0');
-    if (!used.has(s)) return s;
-  }
-  return null;
+  // Предварительный клиентский расчёт для превью. Реальное значение
+  // вычисляет формула столбца serial на сервере (Grist): count+1 среди
+  // строк с тем же country_prefix/org_prefix и меньшим id.
+  const count = S.components
+    .filter(c => (c.country_prefix||'') === country && (c.org_prefix||'') === org)
+    .length;
+  return String(count + 1).padStart(5,'0');
 }
 
 function computeEdition(country, org, serial, docTypeCode, docNum) {
@@ -853,13 +850,15 @@ async function addComponent() {
   const name = (document.getElementById('nameInput').value||'').trim();
   if (!country || !org || !name) return;
 
-  let serial;
+  let serial, serialSourceId;
   const lk = S.lockedSerial;
   if (lk && lk.country === country && lk.org === org) {
     serial = lk.serial;
+    serialSourceId = lk.rowId;
   } else {
     serial = nextFreeSerial(country, org);
     if (!serial) return;
+    serialSourceId = null;
   }
 
   const docTypeCode = (document.getElementById('docTypeSelect').value||'').trim();
@@ -898,14 +897,16 @@ async function addComponent() {
   btn.disabled = true;
   btn.textContent = 'Сохранение…';
 
+  // serial — формульный столбец, напрямую не пишем.
+  // При переиспользовании номера (lockedSerial) явно указываем serial_source.
   const fields = {
     country_prefix: country,
     org_prefix: org,
-    serial,
     edition,
     espd_number,
     name,
   };
+  if (serialSourceId) fields.serial_source = serialSourceId;
   if (docTypeCode) fields.doc_type_code = docTypeCode;
   if (docTypeCode && docNum) fields.doc_num = docNum;
   if (docTypeCode && docNum && partNum) fields.part_num = partNum;
@@ -919,7 +920,21 @@ async function addComponent() {
 
   try {
     if (typeof grist !== 'undefined') {
-      await grist.selectedTable.create({ fields });
+      const created = await grist.selectedTable.create({ fields });
+      const newId = Array.isArray(created) ? created[0] : (created.id || created);
+
+      // PATCH — перезапускаем формулу serial (та же схема, что в widget-decimalnumber)
+      if (newId) {
+        try {
+          await grist.selectedTable.update({
+            id: newId,
+            fields: { country_prefix: country }
+          });
+        } catch(patchErr) {
+          console.warn('PATCH trigger failed:', patchErr);
+        }
+      }
+
       loadComponents();
     }
 
