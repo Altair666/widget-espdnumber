@@ -319,7 +319,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.9.5</footer>
+<footer class="ver-footer">v0.9.6</footer>
 <div id="gTooltip"></div>
 
 <script>
@@ -465,13 +465,19 @@ function renderDocTypeSelect() {
    COUNTERS
 ═══════════════════════════════════ */
 function nextFreeSerial(country, org) {
-  // Предварительный клиентский расчёт для превью. Реальное значение
-  // вычисляет формула столбца serial на сервере (Grist): count+1 среди
-  // строк с тем же country_prefix/org_prefix и меньшим id.
-  const count = S.components
-    .filter(c => (c.country_prefix||'') === country && (c.org_prefix||'') === org)
-    .length;
-  return String(count + 1).padStart(5,'0');
+  // Превью; реальное значение считает формула serial на сервере (Grist):
+  // первый свободный номер среди занятых строками с меньшим id
+  // (переиспользованные через serial_source копируют номер источника).
+  const used = new Set(
+    S.components
+      .filter(c => (c.country_prefix||'') === country && (c.org_prefix||'') === org)
+      .map(c => String(c.serial||'').padStart(5,'0'))
+  );
+  for (let i = 1; i <= 99999; i++) {
+    const s = String(i).padStart(5,'0');
+    if (!used.has(s)) return s;
+  }
+  return null;
 }
 
 function computeEdition(country, org, serial, docTypeCode, docNum) {
@@ -902,13 +908,12 @@ async function addComponent() {
   btn.disabled = true;
   btn.textContent = 'Сохранение…';
 
-  // serial — формульный столбец, напрямую не пишем.
-  // При переиспользовании номера (lockedSerial) явно указываем serial_source.
+  // serial и espd_number — формульные столбцы (сервер собирает номер из $serial),
+  // напрямую не пишем. При переиспользовании номера (lockedSerial) указываем serial_source.
   const fields = {
     country_prefix: country,
     org_prefix: org,
     edition,
-    espd_number,
     name,
   };
   if (serialSourceId) fields.serial_source = serialSourceId;
